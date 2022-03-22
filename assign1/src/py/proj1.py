@@ -52,16 +52,13 @@ def print_matrix(matrix):
 
 methods = [on_mult, on_mult_line]
 
-#for size in range(600, 3001, 400):
-#    a = [1 for _ in range(size**2)]
-#    b = [(i // size) + 1 for i in range(size**2)]
-#    print(f"For size {size}x{size}:")
-#    for method in methods:
-#        print(f"\tUsing method: {method.__name__}")
-#        before = perf_counter()
-#        c = method(a,b)
-#        after = perf_counter()
-#        print(f"\t\tTook {after - before}s to get the following product:")
-#        print_matrix(c)
-
-print_matrix(on_mult([1 for _ in range(64**2)], [(i // 64) + 1 for i in range(64**2)]))
+for size in range(600, 3001, 400):
+   a = [1 for _ in range(size**2)]
+   b = [(i // size) + 1 for i in range(size**2)]
+   print(f"For size {size}x{size}:")
+   for method in methods:
+       print(f"\tUsing method: {method.__name__}")
+       before = perf_counter()
+       c = method(a,b)
+       after = perf_counter()
+       print(f"\t\tTook {after - before}s to get the following product:")
