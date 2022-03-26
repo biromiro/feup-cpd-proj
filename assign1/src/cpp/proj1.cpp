@@ -294,6 +294,7 @@ int main (int argc, char *argv[])
 		printf("PAPI_L1_TCM: %lld \n",values[4]);
   		printf("PAPI_L2_TCM: %lld \n",values[5]); 
   		printf("PAPI_TOT_INS: %lld \n\n",values[6]);
+		printf("----\n");
 
 		ret = PAPI_reset( EventSet );
 		if ( ret != PAPI_OK )
@@ -317,6 +318,7 @@ int main (int argc, char *argv[])
 		printf("PAPI_L1_TCM: %lld \n",values[4]);
   		printf("PAPI_L2_TCM: %lld \n",values[5]); 
   		printf("PAPI_TOT_INS: %lld \n\n",values[6]);
+		printf("----\n");
 
 		ret = PAPI_reset( EventSet );
 		if ( ret != PAPI_OK )
@@ -340,6 +342,7 @@ int main (int argc, char *argv[])
 		printf("PAPI_L1_TCM: %lld \n",values[4]);
   		printf("PAPI_L2_TCM: %lld \n",values[5]); 
   		printf("PAPI_TOT_INS: %lld \n\n",values[6]);
+		printf("----\n");
 
 		ret = PAPI_reset( EventSet );
 		if ( ret != PAPI_OK )
@@ -365,7 +368,7 @@ int main (int argc, char *argv[])
 			printf("PAPI_L1_TCM: %lld \n",values[4]);
 			printf("PAPI_L2_TCM: %lld \n",values[5]); 
 			printf("PAPI_TOT_INS: %lld \n\n",values[6]);
-
+			printf("----\n");
 			ret = PAPI_reset( EventSet );
 			if ( ret != PAPI_OK )
 				std::cout << "FAIL reset" << endl; 

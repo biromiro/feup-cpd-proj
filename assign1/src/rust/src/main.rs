@@ -41,7 +41,7 @@ fn on_mult(n: usize) {
             print!("{} ", phc[j]);
         }
     }
-    println!("\n----");
+    println!("\n\n----");
 }
 
 fn on_mult_line(n: usize) {
@@ -83,7 +83,7 @@ fn on_mult_line(n: usize) {
             print!("{} ", phc[j]);
         }
     }
-    println!("\n----");
+    println!("\n\n----");
 }
 
 fn on_mult_block(n: usize, block_size: usize) {
@@ -133,11 +133,45 @@ fn on_mult_block(n: usize, block_size: usize) {
             print!("{} ", phc[j]);
         }
     }
-    println!("\n----");
+    println!("\n\n----");
 }
 
 fn main() {
-    on_mult(1024);
-    on_mult_line(2048);
-    on_mult_block(2048, 128);
+
+    println!("-----Multiplication-----\n\n");
+    let mut mult = 600;
+    while mult < 3001 {
+        println!("n={}", mult);
+        on_mult(mult);
+        mult += 400;
+    }
+
+    println!("-----Line Multiplication-----\n\n");
+    let mut line_mult = 600;
+    while line_mult < 3001 {
+        println!("n={}", line_mult);
+        on_mult_line(line_mult);
+        line_mult += 400;
+    }
+
+    line_mult = 4096;
+
+    while line_mult < 12401 {
+        println!("n={}", line_mult);
+        on_mult_line(line_mult);
+        line_mult += 2048;
+    }
+
+    println!("-----Block Multiplication-----\n\n");
+
+    let mut block_mult = 4096;
+    while block_mult < 12401 {
+        let mut step = 128;
+        while step < 513 {
+            println!("n={}, blocksize={}", block_mult, step);
+            on_mult_block(block_mult, step);
+            step *= 2;
+        }
+        block_mult += 2048;
+    }
 }
