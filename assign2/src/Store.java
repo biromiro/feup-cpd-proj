@@ -1,5 +1,3 @@
-import java.rmi.AccessException;
-import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -12,16 +10,8 @@ public class Store {
 
     private static void startStore(String mcastAddr, int mcastPort, String nodeId, int storePort) {
         PersistentStorage storage = new PersistentStorage(nodeId);
-        Node node = new Node(storage);
-        try {
-            MembershipService membershipService = (MembershipService) UnicastRemoteObject.exportObject(node, 0);
-            Registry registry = LocateRegistry.getRegistry();
-            registry.rebind("Membership", membershipService);
-
-            System.err.println("Server ready");
-        } catch (RemoteException e) {
-            System.out.println("Failed to connect to registry.");
-        }
+        Node node = new Node(storage, mcastAddr, mcastPort, nodeId, storePort);
+        node.bindRMI("Membership");
     }
 
     public static void main(String[] args) {

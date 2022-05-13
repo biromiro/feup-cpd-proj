@@ -28,23 +28,23 @@ public class TestClient {
         }
     }
 
-    private static void keyValueOperation(String ip, String remoteObject, String operation, String operand) {
+    private static void keyValueOperation(String ip, int port, String operation, String operand) {
         switch (operation) {
-            case "put" -> put(ip, remoteObject, operand);
-            case "get" -> get(ip, remoteObject, operand);
-            case "delete" -> delete(ip, remoteObject, operand);
+            case "put" -> put(ip, port, operand);
+            case "get" -> get(ip, port, operand);
+            case "delete" -> delete(ip, port, operand);
         }
     }
 
-    private static void put(String ip, String remoteObject, String filepath) {
+    private static void put(String ip, int port, String filepath) {
         // TODO
     }
 
-    private static void get(String ip, String remoteObject, String key) {
+    private static void get(String ip, int port, String key) {
         // TODO
     }
 
-    private static void delete(String ip, String remoteObject, String key) {
+    private static void delete(String ip, int port, String key) {
         // TODO
     }
 
@@ -61,14 +61,15 @@ public class TestClient {
         }
 
         String ip = accessPoint[0];
-        String remoteObject = accessPoint[1];
         String operation = args[1];
 
         if(MEMBERSHIP_OPERATIONS.contains(operation) && args.length == 2) {
+            String remoteObject = accessPoint[1];
             membershipOperation(ip, remoteObject, operation);
         } else if(KEY_VALUE_OPERATIONS.contains(operation) && args.length == 3) {
+            int port = Integer.parseInt(accessPoint[1]);
             String operand = args[2];
-            keyValueOperation(ip, remoteObject, operation, operand);
+            keyValueOperation(ip, port, operation, operand);
         } else {
             printUsage();
         }

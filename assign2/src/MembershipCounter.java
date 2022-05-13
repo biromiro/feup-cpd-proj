@@ -15,7 +15,7 @@ public class MembershipCounter {
             try {
                 count = Integer.parseInt(storage.read(MEMBERSHIP_COUNTER_FILE));
             } catch (FileNotFoundException e) {
-                count = 0;
+                count = -1;
             }
         }
         return count;
