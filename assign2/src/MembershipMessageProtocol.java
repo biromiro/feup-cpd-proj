@@ -1,9 +1,10 @@
 import java.util.List;
 
 public class MembershipMessageProtocol {
-    public static String join(int membershipCounter) {
+    public static String join(int membershipCounter, int port) {
         return new GenericMessageProtocol()
                 .addHeaderEntry("JOIN")
+                .addHeaderEntry("port", String.valueOf(port))
                 .addHeaderEntry("counter", String.valueOf(membershipCounter))
                 .toString();
     }
