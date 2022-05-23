@@ -18,6 +18,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 public class Node implements MembershipService {
+    private final MembershipHandler membershipHandler;
     private PersistentStorage storage;
     private String mcastAddr;
     private int mcastPort;
@@ -30,21 +31,28 @@ public class Node implements MembershipService {
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
+        this.membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort);
+
     }
 
     @Override
     public void join() throws RemoteException {
         System.out.println("Node joined");
 
-        MembershipHandler membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort);
         membershipHandler.join();
+
         // TODO add running thread for tcp connections
 
     }
 
     @Override
-    public void leave() {
+    public void leave() throws RemoteException {
         System.out.println("Node left");
+
+        // TODO transfer information to successor
+
+        membershipHandler.leave();
+
     }
 
     public void bindRMI(String name) {

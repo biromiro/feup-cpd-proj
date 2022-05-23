@@ -56,9 +56,17 @@ public class MembershipHandler implements MembershipService{
         return clusterConnection;
     }
 
-    private void sendMembershipMessageProtocolMulticast(MulticastConnection clusterConnection, int count) {
+    private void sendJoinMulticast(MulticastConnection clusterConnection, int count) {
         try {
             clusterConnection.send(MembershipMessageProtocol.join(count, this.storePort));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to connect to multicast group.", e);
+        }
+    }
+
+    private void sendLeaveMulticast(MulticastConnection clusterConnection, int count) {
+        try {
+            clusterConnection.send(MembershipMessageProtocol.leave(count));
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
@@ -84,7 +92,7 @@ public class MembershipHandler implements MembershipService{
         }
 
         MulticastConnection clusterConnection = initializeMulticastConnection();
-        sendMembershipMessageProtocolMulticast(clusterConnection, membershipCounter.get());
+        sendJoinMulticast(clusterConnection, membershipCounter.get());
         int transmissionCount = 1;
         int membershipMessagesCount = 0;
 
@@ -96,7 +104,7 @@ public class MembershipHandler implements MembershipService{
                 executor.submit(new ParseMembershipTask(socket));
             } catch (SocketTimeoutException ex) {
                 System.out.println("There was a timeout, trying again");
-                sendMembershipMessageProtocolMulticast(clusterConnection, membershipCounter.get());
+                sendJoinMulticast(clusterConnection, membershipCounter.get());
                 transmissionCount += 1;
 
             } catch (IOException ex) {
@@ -118,6 +126,29 @@ public class MembershipHandler implements MembershipService{
 
     @Override
     public void leave() throws RemoteException {
+        MembershipCounter membershipCounter = new MembershipCounter(storage);
 
+        if (membershipCounter.isLeaveCount()) {
+            System.out.println("Node is not in the cluster.");
+            return;
+        }
+
+        ServerSocket serverSocket = initializeServerSocket();
+
+        try {
+            membershipCounter.increment();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
+        }
+
+        MulticastConnection clusterConnection = initializeMulticastConnection();
+        sendLeaveMulticast(clusterConnection, membershipCounter.get());
+
+        System.out.println("Goodbye socket for membership");
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
