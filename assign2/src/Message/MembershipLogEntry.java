@@ -1,3 +1,5 @@
+package Message;
+
 public record MembershipLogEntry(String nodeId, int membershipCounter) {
     @Override
     public String toString() {

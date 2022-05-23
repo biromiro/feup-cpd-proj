@@ -1,3 +1,10 @@
+import Connection.MulticastConnection;
+import Membership.MembershipCounter;
+import Membership.MembershipHandler;
+import Membership.MembershipService;
+import Message.MembershipMessageProtocol;
+import Storage.PersistentStorage;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,9 +18,6 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 public class Node implements MembershipService {
-    private static final int MAX_MEMBERSHIP_MESSAGES = 3;
-    private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
-    private static final int MAX_RETRANSMISSION_TIMES = 3;
     private PersistentStorage storage;
     private String mcastAddr;
     private int mcastPort;
@@ -29,75 +33,13 @@ public class Node implements MembershipService {
     }
 
     @Override
-    public void join() {
+    public void join() throws RemoteException {
         System.out.println("Node joined");
-        MembershipCounter membershipCounter = new MembershipCounter(storage);
 
-        if (membershipCounter.get() % 2 == 0) {
-            System.out.println("Node is already in the cluster.");
-            return;
-        }
+        MembershipHandler membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort);
+        membershipHandler.join();
+        // TODO add running thread for tcp connections
 
-        ServerSocket serverSocket = null;
-        try {
-            serverSocket = new ServerSocket(this.storePort);
-            serverSocket.setSoTimeout(MEMBERSHIP_ACCEPT_TIMEOUT);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Server is listening on port " + this.storePort);
-
-        int count;
-        try {
-            count = membershipCounter.increment();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
-        }
-
-        try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
-            clusterConnection.send(MembershipMessageProtocol.join(count, this.storePort));
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to connect to multicast group.", e);
-        }
-
-        int membershipMessagesCount = 0;
-        int transmissionCount = 0;
-        while (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
-            try {
-                transmissionCount += 1;
-                Socket socket = serverSocket.accept();
-                membershipMessagesCount += 1;
-
-                InputStream input = socket.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-
-                String time = reader.readLine();
-                System.out.println("New MEMBERSHIP message: " + time);
-                // TODO parse membership message
-            } catch (SocketTimeoutException ex) {
-                if (transmissionCount >= MAX_RETRANSMISSION_TIMES) {
-                    System.out.println("Max retrasmissions, giving up");
-                } else {
-                    System.out.println("There was a timeout, trying again");
-                }
-            } catch (IOException ex) {
-                System.out.println("Server exception: " + ex.getMessage());
-                ex.printStackTrace();
-                transmissionCount = 3;
-                try {
-                    serverSocket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        System.out.println("Goodbye socket for membership");
-        try {
-            serverSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -106,14 +48,20 @@ public class Node implements MembershipService {
     }
 
     public void bindRMI(String name) {
+        MembershipService membershipService = null;
         try {
-            MembershipService membershipService = (MembershipService) UnicastRemoteObject.exportObject(this, 0);
+            membershipService = (MembershipService) UnicastRemoteObject.exportObject(this, 0);
             Registry registry = LocateRegistry.getRegistry();
             registry.rebind(name, membershipService);
-
-            System.err.println("Server ready");
         } catch (RemoteException e) {
-            System.out.println("Failed to connect to registry.");
+            try {
+                Registry registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
+                registry.rebind(name, membershipService);
+            } catch (RemoteException ex) {
+                System.err.println("Failed to connect to registry.");
+                return;
+            }
         }
+        System.out.println("Server ready");
     }
 }

@@ -1,3 +1,5 @@
+package Message;
+
 import java.util.List;
 
 public class MembershipMessageProtocol {
