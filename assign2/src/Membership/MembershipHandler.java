@@ -19,12 +19,13 @@ public class MembershipHandler implements MembershipService{
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
+    private static final int N_THREADS = 3;
     private PersistentStorage storage;
     private String mcastAddr;
     private int mcastPort;
     private int storePort;
 
-    ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+    ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
 
     public MembershipHandler(PersistentStorage storage, String mcastAddr, int mcastPort, int storePort) {
         this.storage = storage;
