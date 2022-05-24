@@ -1,5 +1,6 @@
 import Connection.MulticastConnection;
 import Membership.MembershipCounter;
+import Membership.MembershipDispatcher;
 import Membership.MembershipHandler;
 import Membership.MembershipService;
 import Message.MembershipMessageProtocol;
@@ -16,8 +17,11 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
+    private static final int N_THREADS = 3;
     private final MembershipHandler membershipHandler;
     private PersistentStorage storage;
     private String mcastAddr;
@@ -25,13 +29,16 @@ public class Node implements MembershipService {
     private String nodeId;
     private int storePort;
 
+    private ThreadPoolExecutor executor;
+
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort, String nodeId, int storePort) {
         this.storage = storage;
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
-        this.membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
+        this.membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort, executor);
 
     }
 
@@ -40,8 +47,9 @@ public class Node implements MembershipService {
         System.out.println("Node joined");
 
         membershipHandler.join();
-
+        // TODO get information from predecessor
         // TODO add running thread for tcp connections
+        executor.submit(new MembershipDispatcher(storage, storePort, executor));
 
     }
 

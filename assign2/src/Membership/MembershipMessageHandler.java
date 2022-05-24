@@ -6,11 +6,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
-public class ParseMembershipTask implements Runnable {
+public class MembershipMessageHandler implements Runnable {
 
     private final Socket socket;
 
-    ParseMembershipTask(Socket socket) {
+    MembershipMessageHandler(Socket socket) {
         this.socket = socket;
     }
 

@@ -4,30 +4,25 @@ import Connection.MulticastConnection;
 import Message.MembershipMessageProtocol;
 import Storage.PersistentStorage;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.rmi.RemoteException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MembershipHandler implements MembershipService{
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
-    private static final int N_THREADS = 3;
     private PersistentStorage storage;
     private String mcastAddr;
     private int mcastPort;
     private int storePort;
 
-    ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
+    private ThreadPoolExecutor executor;
 
-    public MembershipHandler(PersistentStorage storage, String mcastAddr, int mcastPort, int storePort) {
+    public MembershipHandler(PersistentStorage storage, String mcastAddr, int mcastPort, int storePort, ThreadPoolExecutor executor) {
         this.storage = storage;
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
@@ -101,7 +96,7 @@ public class MembershipHandler implements MembershipService{
             try {
                 Socket socket = serverSocket.accept();
                 membershipMessagesCount += 1;
-                executor.submit(new ParseMembershipTask(socket));
+                executor.submit(new MembershipMessageHandler(socket));
             } catch (SocketTimeoutException ex) {
                 System.out.println("There was a timeout, trying again");
                 sendJoinMulticast(clusterConnection, membershipCounter.get());
