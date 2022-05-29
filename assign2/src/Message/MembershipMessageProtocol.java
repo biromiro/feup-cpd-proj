@@ -1,6 +1,8 @@
 package Message;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MembershipMessageProtocol {
     public static String join(int membershipCounter, int port) {
@@ -35,5 +37,161 @@ public class MembershipMessageProtocol {
                 .addHeaderEntry("log", String.valueOf(log.size()))
                 .setBody(builder.toString())
                 .toString();
+    }
+
+    public static class JoinMessage extends MembershipMessageProtocol {
+        int membershipCounter;
+        int port;
+        JoinMessage(int membershipCounter, int port) {
+            this.membershipCounter = membershipCounter;
+            this.port = port;
+        }
+
+        public int getMembershipCounter() {
+            return membershipCounter;
+        }
+
+        public int getPort() {
+            return port;
+        }
+    }
+
+    public static class LeaveMessage extends MembershipMessageProtocol {
+        int membershipCounter;
+        LeaveMessage(int membershipCounter) {
+            this.membershipCounter = membershipCounter;
+        }
+
+        public int getMembershipCounter() {
+            return membershipCounter;
+        }
+    }
+
+    public static class MembershipMessage extends MembershipMessageProtocol {
+        List<String> members;
+        List<MembershipLogEntry> log;
+        MembershipMessage(List<String> members, List<MembershipLogEntry> log) {
+            this.members = members;
+            this.log = log;
+        }
+
+        public List<String> getMembers() {
+            return members;
+        }
+
+        public List<MembershipLogEntry> getLog() {
+            return log;
+        }
+    }
+
+    private static Map<String, String> parseBinaryHeaders(List<List<String>> headers) throws MessageProtocolException {
+        Map<String, String> fields = new HashMap<>();
+        for (List<String> header: headers) {
+            if (header.size() != 2) {
+                throw new MessageProtocolException("Unexpected header '"
+                        + String.join(" ", header) + '\'');
+            }
+            if (fields.containsKey(header.get(0))) {
+                throw new MessageProtocolException("Duplicate header '"
+                        + String.join(" ", header) + '\'');
+            }
+            fields.put(header.get(0), header.get(1));
+        }
+        return fields;
+    }
+
+    private static void ensureOnlyContains(Map<String, String> fields, List<String> keys)
+            throws MessageProtocolException {
+        for (String key : keys) {
+            if (!fields.containsKey(key)) {
+                throw new MessageProtocolException("Missing field '" + key + '\'');
+            }
+        }
+
+        Optional<String> others = fields
+                .keySet()
+                .stream()
+                .filter(k -> !Objects.equals(k, "port") && !Objects.equals(k, "counter"))
+                .findAny();
+        if (others.isPresent()) {
+            throw new MessageProtocolException("Unexpected field '" + others.get() + '\'');
+        }
+    }
+
+    private static List<MembershipLogEntry> parseLogEntries(String body, int membersCount, int logCount)
+            throws MessageProtocolException {
+        List<String> logList = body
+                .lines()
+                .skip(membersCount + 1)
+                .limit(logCount)
+                .collect(Collectors.toList());
+        List<MembershipLogEntry> log = new ArrayList<>();
+        for (String line: logList) {
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] parts = line.split(" ");
+            if (parts.length != 2) {
+                throw new MessageProtocolException("Unexpected log entry '" + line + '\'');
+            }
+            try {
+                log.add(new MembershipLogEntry(parts[0], Integer.parseInt(parts[1])));
+            } catch (NumberFormatException e) {
+                throw new MessageProtocolException("Unexpected log entry '" + line
+                        + "'. Expected integer, got " + parts[1]);
+            }
+        }
+        return log;
+    }
+
+    public static MembershipMessageProtocol parse(String message) throws MessageProtocolException {
+        GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
+        if (parsedMessage.getHeaders().size() == 0) {
+            throw new MessageProtocolException("Message is missing headers");
+        }
+        if (parsedMessage.getHeaders().get(0).size() != 1) {
+            throw new MessageProtocolException("Unknown message '"
+                    + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
+        }
+
+        List<List<String>> headers = parsedMessage
+                .getHeaders()
+                .subList(1, parsedMessage.getHeaders().size());
+
+        switch (parsedMessage.getHeaders().get(0).get(0)) {
+            case "JOIN" -> {
+                Map<String, String> fields = parseBinaryHeaders(headers);
+                ensureOnlyContains(fields, Arrays.asList("counter", "port"));
+
+                return new JoinMessage(
+                        Integer.parseInt(fields.get("counter")),
+                        Integer.parseInt(fields.get("port")));
+            }
+            case "LEAVE" -> {
+                Map<String, String> fields = parseBinaryHeaders(headers);
+                ensureOnlyContains(fields, List.of("counter"));
+
+                return new LeaveMessage(
+                        Integer.parseInt(fields.get("counter")));
+            }
+            case "MEMBERSHIP" -> {
+                Map<String, String> fields = parseBinaryHeaders(headers);
+                ensureOnlyContains(fields, Arrays.asList("members", "log"));
+
+                int membersCount = Integer.parseInt(fields.get("members"));
+                int logCount = Integer.parseInt(fields.get("log"));
+
+                List<String> members = parsedMessage
+                        .getBody()
+                        .lines()
+                        .limit(membersCount)
+                        .collect(Collectors.toList());
+                List<MembershipLogEntry> log = parseLogEntries(parsedMessage.getBody(), membersCount, logCount);
+
+                return new MembershipMessage(members, log);
+            }
+            default -> throw new MessageProtocolException("Unknown message '"
+                    + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
+        }
     }
 }

@@ -53,7 +53,7 @@ public class MembershipHandler implements MembershipService{
 
         Future<AsynchronousSocketChannel> future = serverSocket.accept();
 
-        AsynchronousSocketChannel worker = null;
+        AsynchronousSocketChannel worker;
         while (transmissionCount < MAX_RETRANSMISSION_TIMES) {
             try {
                 worker = future.get(MEMBERSHIP_ACCEPT_TIMEOUT, TimeUnit.MILLISECONDS);
