@@ -32,11 +32,11 @@ public class MembershipCounter {
         return count;
     }
 
-    public boolean isJoinCount() {
+    public boolean isJoining() {
         return this.get() % 2 == 0;
     }
 
-    public boolean isLeaveCount() {
+    public boolean isLeaving() {
         return this.get() % 2 == 1;
     }
 }

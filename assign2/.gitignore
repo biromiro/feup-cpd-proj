@@ -2,3 +2,5 @@
 *.iml
 out
 storage
+run.cmd
+sources.txt

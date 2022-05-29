@@ -14,7 +14,7 @@ public class TestClient {
     private static void printUsage() {
         System.out.println("java TestClient <node_ap_ip>:<remote_object> <operation> [<operand>]");
     }
-    // LocateRegistry.createRegistry(port: number);
+
     private static void membershipOperation(String ip, String remoteObject, String operation) {
         try {
             Registry registry = LocateRegistry.getRegistry(ip);

@@ -18,7 +18,7 @@ public class MembershipReceiverHandler implements Runnable {
             try {
                 System.out.println("waiting for messages");
                 String receivedMessage = connection.receive();
-                System.out.println("oh well " + receivedMessage);
+                System.out.println("oh well b\"\"\"\n" + receivedMessage + "\n\"\"\"");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
