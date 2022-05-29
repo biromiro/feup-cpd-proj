@@ -45,20 +45,14 @@ public class Node implements MembershipService {
 
     @Override
     public void join() throws RemoteException {
-        System.out.println("Node joined");
-
         membershipHandler.join();
         // TODO get information from predecessor
     }
 
     @Override
     public void leave() throws RemoteException {
-        System.out.println("Node left");
-
         // TODO transfer information to successor
-
         membershipHandler.leave();
-
     }
 
     public void bindRMI(String name) {

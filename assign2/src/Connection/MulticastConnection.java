@@ -8,10 +8,12 @@ public class MulticastConnection implements AutoCloseable {
     private final int port;
     private final InetAddress group;
     private final MulticastSocket socket;
+    private final String host;
     private boolean joined = false;
 
     public MulticastConnection(String host, int port) throws IOException {
         this.port = port;
+        this.host = host;
         group = InetAddress.getByName(host);
         socket = new MulticastSocket(port);
     }
@@ -23,7 +25,7 @@ public class MulticastConnection implements AutoCloseable {
 
     public String receive() throws IOException {
         if (!joined) {
-            socket.joinGroup(new InetSocketAddress(group, port), NetworkInterface.getByName("lo"));
+            socket.joinGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
             this.joined = true;
         }
 
@@ -42,7 +44,7 @@ public class MulticastConnection implements AutoCloseable {
 
     public void close() throws IOException {
         if (joined) {
-            socket.leaveGroup(new InetSocketAddress(group, port), NetworkInterface.getByName("lo"));
+            socket.leaveGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
         }
 
         socket.close();

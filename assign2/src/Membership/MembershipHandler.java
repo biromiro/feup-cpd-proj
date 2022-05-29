@@ -8,17 +8,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.rmi.RemoteException;
 import java.util.concurrent.*;
 
 public class MembershipHandler implements MembershipService{
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
-    private PersistentStorage storage;
-    private String mcastAddr;
-    private int mcastPort;
-    private int storePort;
+    private final PersistentStorage storage;
+    private final String mcastAddr;
+    private final int mcastPort;
+    private final int storePort;
 
     private ThreadPoolExecutor executor;
 
@@ -78,8 +77,7 @@ public class MembershipHandler implements MembershipService{
         }
     }
 
-    @Override
-    public void join() throws RemoteException {
+    public void join() {
         MembershipCounter membershipCounter = new MembershipCounter(storage);
         if (membershipCounter.isJoining()) {
             System.out.println("Node is already in the cluster.");
@@ -102,8 +100,7 @@ public class MembershipHandler implements MembershipService{
         }
     }
 
-    @Override
-    public void leave() throws RemoteException {
+    public void leave() {
         MembershipCounter membershipCounter = new MembershipCounter(storage);
         if (membershipCounter.isLeaving()) {
             System.out.println("Node is not in the cluster.");
@@ -120,10 +117,13 @@ public class MembershipHandler implements MembershipService{
     }
 
     public void receive(ThreadPoolExecutor executor) {
-        try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
-            executor.submit(new MembershipReceiverHandler(clusterConnection));
+        MulticastConnection clusterConnection = null;
+        try {
+            clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
+
+        executor.submit(new MembershipReceiverHandler(clusterConnection));
     }
 }
