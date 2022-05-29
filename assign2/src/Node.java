@@ -1,8 +1,5 @@
 import Connection.MulticastConnection;
-import Membership.MembershipCounter;
-import Membership.MembershipDispatcher;
-import Membership.MembershipHandler;
-import Membership.MembershipService;
+import Membership.*;
 import Message.MembershipMessageProtocol;
 import Storage.PersistentStorage;
 
@@ -10,9 +7,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.nio.channels.AsynchronousServerSocketChannel;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -48,9 +49,6 @@ public class Node implements MembershipService {
 
         membershipHandler.join();
         // TODO get information from predecessor
-        // TODO add running thread for tcp connections
-        executor.submit(new MembershipDispatcher(storage, storePort, executor));
-
     }
 
     @Override
@@ -79,5 +77,29 @@ public class Node implements MembershipService {
             }
         }
         System.out.println("Server ready");
+    }
+
+    public void initializeTCPLoop() {
+        try (AsynchronousServerSocketChannel listener =
+                     AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort))){
+            listener.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>() {
+                public void completed(AsynchronousSocketChannel ch, Void att) {
+                    // accept the next connection
+                    listener.accept(null, this);
+
+                    // handle this connection
+                    executor.submit(new ClusterChangeMessageHandler(ch));
+                }
+                public void failed(Throwable exc, Void att) {
+
+                }
+            });
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void initializeMulticastLoop() {
+        membershipHandler.receive(executor);
     }
 }

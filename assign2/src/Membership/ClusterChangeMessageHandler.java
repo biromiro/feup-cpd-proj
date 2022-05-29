@@ -1,9 +1,9 @@
 package Membership;
 
-import java.net.Socket;
+import java.nio.channels.AsynchronousSocketChannel;
 
 public class ClusterChangeMessageHandler implements Runnable {
-    public ClusterChangeMessageHandler(Socket socket) {
+    public ClusterChangeMessageHandler(AsynchronousSocketChannel socket) {
     }
 
     @Override
