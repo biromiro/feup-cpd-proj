@@ -1,7 +1,6 @@
+import KVStore.Cluster;
 import Membership.*;
-import Storage.MembershipCounter;
-import Storage.MembershipLog;
-import Storage.PersistentStorage;
+import Storage.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -76,6 +75,22 @@ public class Node implements MembershipService {
 
         // TODO transfer information to successor
         membershipHandler.leave(membershipCounter.get());
+    }
+
+    /*
+        testclient: pede get a access point (x)
+        access point: calcula successor e pede-lhe keyvalue
+        successor: responde com keyvalue
+
+        sou sucessor? sim -> respondo
+                      nao -> peço ao sucessor
+     */
+
+    public void get(String key) {
+        Cluster cluster = membershipView.getMembers();
+        String successor = cluster.successor(key);
+        //KVStoreHandler getter = new KVStoreHandler();
+        //TCP connection to get entry from there
     }
 
     public void bindRMI(String name) {
