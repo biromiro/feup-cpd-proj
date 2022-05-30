@@ -63,7 +63,7 @@ public class MembershipHandler {
                     future = serverSocket.accept();
                 } else break;
 
-                membershipMessagesCount += 1;
+                membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
                 executor.submit(new MembershipMessageHandler(worker, membershipView));
             } catch (TimeoutException e) {
                 System.out.println("There was a timeout, trying again");
