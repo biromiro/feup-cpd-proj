@@ -18,15 +18,18 @@ public class MembershipHandler {
     private final int mcastPort;
     private final String nodeId;
     private final int storePort;
+    private MembershipView membershipView;
     private MulticastConnection clusterConnection;
 
     private ThreadPoolExecutor executor;
 
-    public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort, ThreadPoolExecutor executor) {
+    public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort,
+                             MembershipView membershipView, ThreadPoolExecutor executor) {
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
+        this.membershipView = membershipView;
         try {
             this.clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
         } catch (IOException e) {
@@ -61,7 +64,7 @@ public class MembershipHandler {
                 } else break;
 
                 membershipMessagesCount += 1;
-                executor.submit(new MembershipMessageHandler(worker));
+                executor.submit(new MembershipMessageHandler(worker, membershipView));
             } catch (TimeoutException e) {
                 System.out.println("There was a timeout, trying again");
                 clusterConnection.send(MembershipMessageProtocol.join(this.nodeId, this.storePort, counter));
@@ -98,7 +101,7 @@ public class MembershipHandler {
         }
     }
 
-    public void receive(MembershipView membershipView) {
+    public void receive() {
         executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipView));
     }
 }

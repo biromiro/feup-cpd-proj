@@ -40,7 +40,7 @@ public class Node implements MembershipService {
 
         System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort, executor);
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort, membershipView, executor);
     }
 
     private void incrementCounter() {
@@ -62,7 +62,7 @@ public class Node implements MembershipService {
         incrementCounter();
 
         membershipHandler.join(membershipCounter.get());
-        membershipHandler.receive(membershipView);
+        membershipHandler.receive();
         // TODO get information from predecessor
     }
 
@@ -119,7 +119,7 @@ public class Node implements MembershipService {
     public void start() {
         this.initializeTCPLoop();
         if (membershipCounter.isJoin()) {
-            membershipHandler.receive(membershipView);
+            membershipHandler.receive();
         }
         /* TODO else reinitialize, send multicast saying a crash occurred, asking for 3 membership logs, start
             sending multicast as cluster leader, receive in tcp loop the message from cluster leader becoming its predecessor
