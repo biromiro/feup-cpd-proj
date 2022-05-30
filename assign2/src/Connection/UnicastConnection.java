@@ -32,6 +32,8 @@ public class UnicastConnection implements AutoCloseable {
     }
 
     public void close() throws IOException {
+        reader.close();
+        writer.close();
         socket.close();
     }
 }

@@ -1,4 +1,5 @@
 import KVStore.Cluster;
+import KVStore.KVStoreMessageHandler;
 import Membership.*;
 import Storage.*;
 
@@ -15,8 +16,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
-    private final String mcastAddr;
-    private final int mcastPort;
     private final String nodeId;
     private final int storePort;
     private final MembershipCounter membershipCounter;
@@ -26,8 +25,6 @@ public class Node implements MembershipService {
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
-        this.mcastAddr = mcastAddr;
-        this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
 
@@ -76,22 +73,6 @@ public class Node implements MembershipService {
         membershipHandler.leave(membershipCounter.get());
     }
 
-    /*
-        testclient: pede get a access point (x)
-        access point: calcula successor e pede-lhe keyvalue
-        successor: responde com keyvalue
-
-        sou sucessor? sim -> respondo
-                      nao -> peço ao sucessor
-     */
-
-    public void get(String key) {
-        Cluster cluster = membershipView.getCluster();
-        String successor = cluster.successor(key);
-        //KVStoreHandler getter = new KVStoreHandler();
-        //TCP connection to get entry from there
-    }
-
     public void bindRMI(String name) {
         MembershipService membershipService = null;
         try {
@@ -112,14 +93,14 @@ public class Node implements MembershipService {
 
     public void initializeTCPLoop() {
         try (AsynchronousServerSocketChannel listener =
-                     AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort))){
+                     AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort))) {
             listener.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>() {
                 public void completed(AsynchronousSocketChannel ch, Void att) {
                     // accept the next connection
                     listener.accept(null, this);
                     // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
                     // handle this connection
-                    executor.submit(new ClusterChangeMessageHandler(ch));
+                    executor.submit(new KVStoreMessageHandler(nodeId, ch, membershipView));
                 }
                 public void failed(Throwable exc, Void att) {
 
