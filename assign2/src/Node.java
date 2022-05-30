@@ -20,7 +20,7 @@ public class Node implements MembershipService {
     private final int mcastPort;
     private final String nodeId;
     private final int storePort;
-
+    private int priority;
     private final MembershipCounter membershipCounter;
     private final MembershipView membershipView;
 
@@ -38,8 +38,8 @@ public class Node implements MembershipService {
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog);
 
-        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort);
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort, executor);
     }
 
     private void incrementCounter() {
@@ -120,5 +120,8 @@ public class Node implements MembershipService {
         if (membershipCounter.isJoin()) {
             membershipHandler.receive(executor, membershipView);
         }
+        /* TODO else reinitialize, send multicast saying a crash occurred, asking for 3 membership logs, start
+            sending multicast as cluster leader, receive in tcp loop the message from cluster leader becoming its predecessor
+            */
     }
 }

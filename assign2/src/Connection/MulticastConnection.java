@@ -5,6 +5,7 @@ import java.net.*;
 
 public class MulticastConnection implements AutoCloseable {
     private static final int RECEIVE_BUFFER_SIZE = 1024;
+    private static final int TIMEOUT = 1500;
     private final int port;
     private final InetAddress group;
     private final MulticastSocket socket;
@@ -16,6 +17,7 @@ public class MulticastConnection implements AutoCloseable {
         this.host = host;
         group = InetAddress.getByName(host);
         socket = new MulticastSocket(port);
+        socket.setSoTimeout(TIMEOUT);
     }
 
     public void send(String message) throws IOException {

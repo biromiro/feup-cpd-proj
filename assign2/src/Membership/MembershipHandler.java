@@ -18,15 +18,22 @@ public class MembershipHandler {
     private final int mcastPort;
     private final String nodeId;
     private final int storePort;
+    private MulticastConnection clusterConnection;
 
     // TODO why is this unassigned?
     private ThreadPoolExecutor executor;
 
-    public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort) {
+    public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort, ThreadPoolExecutor executor) {
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
+        try {
+            this.clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to connect to multicast group.", e);
+        }
+        this.executor = executor;
     }
 
     private AsynchronousServerSocketChannel initializeServerSocket() throws IOException {
@@ -73,13 +80,8 @@ public class MembershipHandler {
     public void join(int count) {
         try (AsynchronousServerSocketChannel serverSocket = initializeServerSocket()) {
             System.out.println("Server is listening on port " + this.storePort);
-
-            try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
-                connectToCluster(serverSocket, clusterConnection, count);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to connect to multicast group.", e);
-            }
-
+            if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
+            connectToCluster(serverSocket, clusterConnection, count);
             System.out.println("Goodbye socket for membership");
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server.", e);
@@ -87,8 +89,9 @@ public class MembershipHandler {
     }
 
     public void leave(int count) {
-        try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
+        try  {
             clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
+            clusterConnection.close();
             System.out.println("message sent");
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
@@ -96,13 +99,6 @@ public class MembershipHandler {
     }
 
     public void receive(ThreadPoolExecutor executor, MembershipView membershipView) {
-        MulticastConnection clusterConnection = null;
-        try {
-            clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to connect to multicast group.", e);
-        }
-
         executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipView));
     }
 }

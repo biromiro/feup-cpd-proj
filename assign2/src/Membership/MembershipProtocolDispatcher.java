@@ -4,6 +4,7 @@ import Connection.MulticastConnection;
 import Storage.MembershipLog;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MembershipProtocolDispatcher implements Runnable {
@@ -25,6 +26,9 @@ public class MembershipProtocolDispatcher implements Runnable {
                 System.out.println("waiting for messages");
                 receivedMessage = connection.receive();
                 System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
+            } catch (SocketTimeoutException e) {
+                System.out.println("timedout");
+                continue;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
