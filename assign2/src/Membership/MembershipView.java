@@ -1,5 +1,6 @@
 package Membership;
 
+import KVStore.Cluster;
 import Storage.MembershipCounter;
 import Storage.MembershipLog;
 import Storage.MembershipLogEntry;
@@ -9,12 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MembershipView {
-    MembershipLog membershipLog;
-    List<String> members;
+    private final MembershipLog membershipLog;
+    private Cluster members;
 
     public MembershipView(MembershipLog membershipLog) {
         this.membershipLog = membershipLog;
-        this.members = new ArrayList<>();
+        this.members = new Cluster();
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
                 members.add(entry.nodeId());
@@ -22,7 +23,7 @@ public class MembershipView {
         }
     }
 
-    public List<String> getMembers() {
+    public Cluster getMembers() {
         return members;
     }
 
@@ -46,7 +47,8 @@ public class MembershipView {
             throw new RuntimeException("Couldn't write log to file.", e);
         }
 
-        this.members = members;
+        //TODO recycle hashes as much as possible
+        this.members = new Cluster(members);
 
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
