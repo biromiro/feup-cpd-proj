@@ -18,6 +18,7 @@ public class MembershipProtocolHandler implements Runnable {
 
     @Override
     public void run() {
+        System.out.println("Gonna parse it");
         MembershipMessageProtocol parsedMessage;
         try {
             parsedMessage = MembershipMessageProtocol.parse(receivedMessage);
@@ -25,6 +26,7 @@ public class MembershipProtocolHandler implements Runnable {
             throw new RuntimeException("Invalid message", e);
         }
 
+        System.out.println("Parsed it");
         if (parsedMessage instanceof MembershipMessageProtocol.JoinMessage joinMessage) {
             System.out.println("received join message on port "
                     + joinMessage.getPort() + " with counter " + joinMessage.getMembershipCounter());

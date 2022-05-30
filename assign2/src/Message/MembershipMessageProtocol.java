@@ -47,9 +47,11 @@ public class MembershipMessageProtocol {
         int membershipCounter;
         int port;
         JoinMessage(String node, int membershipCounter, int port) {
+            System.out.println("MAKE JOIN MESSAGE");
             this.node = node;
             this.membershipCounter = membershipCounter;
             this.port = port;
+            System.out.println("MADE JOIN MESSAGE");
         }
 
         public String getId() {
@@ -118,6 +120,7 @@ public class MembershipMessageProtocol {
     private static void ensureOnlyContains(Map<String, String> fields, List<String> keys)
             throws MessageProtocolException {
         for (String key : keys) {
+            System.out.println("CHECKING " + key);
             if (!fields.containsKey(key)) {
                 throw new MessageProtocolException("Missing field '" + key + '\'');
             }
@@ -126,7 +129,7 @@ public class MembershipMessageProtocol {
         Optional<String> others = fields
                 .keySet()
                 .stream()
-                .filter(k -> !Objects.equals(k, "port") && !Objects.equals(k, "counter"))
+                .filter(k -> !keys.contains(k))
                 .findAny();
         if (others.isPresent()) {
             throw new MessageProtocolException("Unexpected field '" + others.get() + '\'');
@@ -162,9 +165,11 @@ public class MembershipMessageProtocol {
     public static MembershipMessageProtocol parse(String message) throws MessageProtocolException {
         GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
         if (parsedMessage.getHeaders().size() == 0) {
+            System.out.println("WHAT");
             throw new MessageProtocolException("Message is missing headers");
         }
         if (parsedMessage.getHeaders().get(0).size() != 1) {
+            System.out.println("WHAT 2???");
             throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
         }
@@ -173,9 +178,16 @@ public class MembershipMessageProtocol {
                 .getHeaders()
                 .subList(1, parsedMessage.getHeaders().size());
 
+        System.out.println("HEADERS: " + headers);
+        System.out.println(parsedMessage.getHeaders());
+        System.out.println(parsedMessage.getHeaders().get(0));
+        System.out.println(parsedMessage.getHeaders().get(0).get(0));
+
         switch (parsedMessage.getHeaders().get(0).get(0)) {
             case "JOIN" -> {
+                System.out.println("SHOULD BE JOIND");
                 Map<String, String> fields = parseBinaryHeaders(headers);
+                System.out.println("FIELDS: " + fields);
                 ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
 
                 return new JoinMessage(

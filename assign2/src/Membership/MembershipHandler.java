@@ -20,7 +20,6 @@ public class MembershipHandler {
     private final int storePort;
     private MulticastConnection clusterConnection;
 
-    // TODO why is this unassigned?
     private ThreadPoolExecutor executor;
 
     public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort, ThreadPoolExecutor executor) {
@@ -90,6 +89,7 @@ public class MembershipHandler {
 
     public void leave(int count) {
         try  {
+            clusterConnection.leave();
             clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
             clusterConnection.close();
             System.out.println("message sent");
@@ -98,7 +98,7 @@ public class MembershipHandler {
         }
     }
 
-    public void receive(ThreadPoolExecutor executor, MembershipView membershipView) {
+    public void receive(MembershipView membershipView) {
         executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipView));
     }
 }

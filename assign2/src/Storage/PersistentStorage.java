@@ -34,7 +34,7 @@ public class PersistentStorage {
 
     public void write(String fileName, String content) throws IOException {
         PrintWriter writer = new PrintWriter(getFile(fileName), StandardCharsets.UTF_8);
-        writer.println(content);
+        writer.print(content);
         writer.close();
     }
 

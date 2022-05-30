@@ -20,19 +20,19 @@ public class MembershipProtocolDispatcher implements Runnable {
     }
     @Override
     public void run() {
+        System.out.println("waiting for messages");
         while(!connection.isClosed()) {
             String receivedMessage;
             try {
-                System.out.println("waiting for messages");
                 receivedMessage = connection.receive();
                 System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
             } catch (SocketTimeoutException e) {
-                System.out.println("timedout");
                 continue;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
+            System.out.println("Gonna dispatch it");
             executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView));
         }
     }

@@ -23,6 +23,9 @@ public class MembershipLog {
                 Scanner scanner = new Scanner(storage.getFile(MEMBERSHIP_LOG_FILE));
                 while (scanner.hasNextLine()) {
                     String line = scanner.nextLine();
+                    if (line.isEmpty()) {
+                        continue;
+                    }
                     int delimiter = line.lastIndexOf(' ');
                     String nodeId = line.substring(0, delimiter);
                     int membershipCount = Integer.parseInt(line.substring(delimiter + 1));
@@ -66,6 +69,7 @@ public class MembershipLog {
 
     public void log(List<MembershipLogEntry> entries) throws IOException {
         for (MembershipLogEntry entry: entries) {
+            System.out.println("Logging " + entry);
             this.addEntry(entry);
         }
         storage.write(MEMBERSHIP_LOG_FILE, this.toString());

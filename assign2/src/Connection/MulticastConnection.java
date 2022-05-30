@@ -33,9 +33,7 @@ public class MulticastConnection implements AutoCloseable {
 
         byte[] byteArray = new byte[RECEIVE_BUFFER_SIZE];
         DatagramPacket packet = new DatagramPacket(byteArray, byteArray.length);
-        System.out.println("waiting " +  group + " " +  port);
         socket.receive(packet);
-        System.out.println("received");
 
         return new String(packet.getData(), packet.getOffset(), packet.getLength());
     }
@@ -45,10 +43,14 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void close() throws IOException {
+        this.leave();
+        socket.close();
+    }
+
+    public void leave() throws IOException {
         if (joined) {
             socket.leaveGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
+            this.joined = false;
         }
-
-        socket.close();
     }
 }
