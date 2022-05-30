@@ -16,8 +16,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
-    private static final int N_THREADS = 3;
-
     private final String mcastAddr;
     private final int mcastPort;
     private final String nodeId;
@@ -41,7 +39,7 @@ public class Node implements MembershipService {
         this.membershipView = new MembershipView(membershipLog);
 
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort);
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     }
 
     private void incrementCounter() {
