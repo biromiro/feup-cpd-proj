@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class Cluster {
     private final List<NodeEntry> nodes;
@@ -68,4 +69,7 @@ public class Cluster {
         return false;
     }
 
+    public List<String> getMembers() {
+        return nodes.stream().map(NodeEntry::getValue).collect(Collectors.toList());
+    }
 }

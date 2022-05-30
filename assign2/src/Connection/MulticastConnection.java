@@ -5,7 +5,8 @@ import java.net.*;
 
 public class MulticastConnection implements AutoCloseable {
     private static final int RECEIVE_BUFFER_SIZE = 2048;
-    private static final int TIMEOUT = 1500;
+    private static final int TIMEOUT = 3000;
+
     private final int port;
     private final InetAddress group;
     private final MulticastSocket socket;

@@ -6,27 +6,32 @@ import Storage.MembershipLog;
 import Storage.MembershipLogEntry;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MembershipView {
     private final MembershipLog membershipLog;
-    private Cluster members;
+    private Cluster cluster;
+    private int priority;
 
     public MembershipView(MembershipLog membershipLog) {
         this.membershipLog = membershipLog;
-        this.members = new Cluster();
+        this.cluster = new Cluster();
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
-                members.add(entry.nodeId());
+                cluster.add(entry.nodeId());
             }
         }
     }
 
-    public Cluster getMembers() {
-        return members;
+    public Cluster getCluster() {
+        return cluster;
     }
 
+    public List<String> getMembers() {
+        return cluster.getMembers();
+    }
+
+    public List<MembershipLogEntry> getLog() { return membershipLog.get(); }
     public void updateMember(String nodeId, int membershipCounter) {
         try {
             membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
@@ -34,9 +39,9 @@ public class MembershipView {
             throw new RuntimeException("Couldn't write log to file.", e);
         }
         if (MembershipCounter.isJoin(membershipCounter)) {
-            members.add(nodeId);
+            cluster.add(nodeId);
         } else {
-            members.remove(nodeId);
+            cluster.remove(nodeId);
         }
     }
 
@@ -48,16 +53,24 @@ public class MembershipView {
         }
 
         //TODO recycle hashes as much as possible
-        this.members = new Cluster(members);
+        this.cluster = new Cluster(members);
 
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
-                if (!this.members.contains(entry.nodeId())) {
-                    this.members.add(entry.nodeId());
+                if (!this.cluster.contains(entry.nodeId())) {
+                    this.cluster.add(entry.nodeId());
                 }
             } else {
-                this.members.remove(entry.nodeId());
+                this.cluster.remove(entry.nodeId());
             }
         }
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public int getPriority() {
+        return this.priority;
     }
 }
