@@ -1,5 +1,3 @@
-import Membership.MembershipCounter;
-import Message.MembershipLog;
 import Storage.PersistentStorage;
 
 public class Store {

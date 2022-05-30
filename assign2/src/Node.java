@@ -1,17 +1,10 @@
-import Connection.MulticastConnection;
 import Membership.*;
-import Message.MembershipLog;
-import Message.MembershipMessageProtocol;
+import Storage.MembershipCounter;
+import Storage.MembershipLog;
 import Storage.PersistentStorage;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
@@ -31,7 +24,7 @@ public class Node implements MembershipService {
     private final int storePort;
 
     private final MembershipCounter membershipCounter;
-    private final MembershipLog membershipLog;
+    private final MembershipView membershipView;
 
     private final MembershipHandler membershipHandler;
     private final ThreadPoolExecutor executor;
@@ -44,7 +37,8 @@ public class Node implements MembershipService {
         this.storePort = storePort;
 
         this.membershipCounter = new MembershipCounter(storage);
-        this.membershipLog = new MembershipLog(storage);
+        MembershipLog membershipLog = new MembershipLog(storage);
+        this.membershipView = new MembershipView(membershipLog);
 
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort);
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
@@ -56,6 +50,8 @@ public class Node implements MembershipService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
         }
+
+        this.membershipView.updateMember(nodeId, membershipCounter.get());
     }
 
     @Override
@@ -67,7 +63,7 @@ public class Node implements MembershipService {
         incrementCounter();
 
         membershipHandler.join(membershipCounter.get());
-        membershipHandler.receive(executor, membershipLog);
+        membershipHandler.receive(executor, membershipView);
         // TODO get information from predecessor
     }
 
@@ -124,7 +120,7 @@ public class Node implements MembershipService {
     public void start() {
         this.initializeTCPLoop();
         if (membershipCounter.isJoin()) {
-            membershipHandler.receive(executor, membershipLog);
+            membershipHandler.receive(executor, membershipView);
         }
     }
 }

@@ -1,9 +1,8 @@
 package Membership;
 
 import Connection.MulticastConnection;
-import Message.MembershipLog;
+import Storage.MembershipLog;
 import Message.MembershipMessageProtocol;
-import Storage.PersistentStorage;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -96,7 +95,7 @@ public class MembershipHandler {
         }
     }
 
-    public void receive(ThreadPoolExecutor executor, MembershipLog membershipLog) {
+    public void receive(ThreadPoolExecutor executor, MembershipView membershipView) {
         MulticastConnection clusterConnection = null;
         try {
             clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
@@ -104,6 +103,6 @@ public class MembershipHandler {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
 
-        executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipLog));
+        executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipView));
     }
 }

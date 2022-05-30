@@ -1,7 +1,7 @@
 package Membership;
 
-import Message.MembershipLog;
-import Message.MembershipLogEntry;
+import Storage.MembershipLog;
+import Storage.MembershipLogEntry;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
@@ -9,11 +9,11 @@ import java.io.IOException;
 
 public class MembershipProtocolHandler implements Runnable {
     private final String receivedMessage;
-    private final MembershipLog membershipLog;
+    private final MembershipView membershipView;
 
-    public MembershipProtocolHandler(String receivedMessage, MembershipLog membershipLog) {
+    public MembershipProtocolHandler(String receivedMessage, MembershipView membershipView) {
         this.receivedMessage = receivedMessage;
-        this.membershipLog = membershipLog;
+        this.membershipView = membershipView;
     }
 
     @Override
@@ -39,24 +39,17 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void handleJoin(MembershipMessageProtocol.JoinMessage joinMessage) {
-        try {
-            membershipLog.log(new MembershipLogEntry(joinMessage.getId(), joinMessage.getMembershipCounter()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
         // TODO
     }
 
     private void handleLeave(MembershipMessageProtocol.LeaveMessage leaveMessage) {
-        try {
-            membershipLog.log(new MembershipLogEntry(leaveMessage.getId(), leaveMessage.getMembershipCounter()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        membershipView.updateMember(leaveMessage.getId(), leaveMessage.getMembershipCounter());
         // TODO
     }
 
     private void handleMembership(MembershipMessageProtocol.MembershipMessage membershipMessage) {
+        membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
         // TODO
     }
 }

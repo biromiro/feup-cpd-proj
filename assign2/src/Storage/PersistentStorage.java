@@ -48,12 +48,4 @@ public class PersistentStorage {
 
         return data.toString();
     }
-
-    public void append(String filename, String content) throws IOException {
-        Files.writeString(
-                getPath(filename),
-                content + System.lineSeparator(),
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND
-        );
-    }
 }

@@ -1,24 +1,21 @@
 package Membership;
 
 import Connection.MulticastConnection;
-import Message.MembershipLog;
-import Message.MembershipMessageProtocol;
-import Message.MessageProtocolException;
+import Storage.MembershipLog;
 
 import java.io.IOException;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MembershipProtocolDispatcher implements Runnable {
     private final MulticastConnection connection;
     private final ThreadPoolExecutor executor;
-    private MembershipLog membershipLog;
+    private MembershipView membershipView;
 
     MembershipProtocolDispatcher(MulticastConnection connection, ThreadPoolExecutor executor,
-                                 MembershipLog membershipLog) {
+                                 MembershipView membershipView) {
         this.connection = connection;
         this.executor = executor;
-        this.membershipLog = membershipLog;
+        this.membershipView = membershipView;
     }
     @Override
     public void run() {
@@ -32,7 +29,7 @@ public class MembershipProtocolDispatcher implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            executor.submit(new MembershipProtocolHandler(receivedMessage, membershipLog));
+            executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView));
         }
     }
 }
