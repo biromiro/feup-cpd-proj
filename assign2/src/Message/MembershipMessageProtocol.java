@@ -65,11 +65,11 @@ public class MembershipMessageProtocol {
                 .toString();
     }
 
-    public static class JoinMessage extends MembershipMessageProtocol {
-        private String node;
-        int membershipCounter;
-        int port;
-        JoinMessage(String node, int membershipCounter, int port) {
+    public static class Join extends MembershipMessageProtocol {
+        private final String node;
+        private int membershipCounter;
+        private int port;
+        public Join(String node, int membershipCounter, int port) {
             System.out.println("MAKE JOIN MESSAGE");
             this.node = node;
             this.membershipCounter = membershipCounter;
@@ -90,10 +90,10 @@ public class MembershipMessageProtocol {
         }
     }
 
-    public static class LeaveMessage extends MembershipMessageProtocol {
-        private String node;
-        int membershipCounter;
-        LeaveMessage(String node, int membershipCounter) {
+    public static class Leave extends MembershipMessageProtocol {
+        private final String node;
+        private int membershipCounter;
+        public Leave(String node, int membershipCounter) {
             this.node = node;
             this.membershipCounter = membershipCounter;
         }
@@ -107,10 +107,10 @@ public class MembershipMessageProtocol {
         }
     }
 
-    public static class MembershipMessage extends MembershipMessageProtocol {
-        List<String> members;
-        List<MembershipLogEntry> log;
-        MembershipMessage(List<String> members, List<MembershipLogEntry> log) {
+    public static class Membership extends MembershipMessageProtocol {
+        private List<String> members;
+        private List<MembershipLogEntry> log;
+        public Membership(List<String> members, List<MembershipLogEntry> log) {
             this.members = members;
             this.log = log;
         }
@@ -124,10 +124,10 @@ public class MembershipMessageProtocol {
         }
     }
 
-    public static class ReinitializeMessage extends MembershipMessageProtocol {
-        private String node;
-        int port;
-        ReinitializeMessage(String node, int port) {
+    public static class Reinitialize extends MembershipMessageProtocol {
+        private final String node;
+        private int port;
+        public Reinitialize(String node, int port) {
             this.node = node;
             this.port = port;
         }
@@ -138,42 +138,6 @@ public class MembershipMessageProtocol {
 
         public int getPort() {
             return port;
-        }
-    }
-
-
-    private static Map<String, String> parseBinaryHeaders(List<List<String>> headers) throws MessageProtocolException {
-        Map<String, String> fields = new HashMap<>();
-        for (List<String> header: headers) {
-            if (header.size() != 2) {
-                throw new MessageProtocolException("Unexpected header '"
-                        + String.join(" ", header) + '\'');
-            }
-            if (fields.containsKey(header.get(0))) {
-                throw new MessageProtocolException("Duplicate header '"
-                        + String.join(" ", header) + '\'');
-            }
-            fields.put(header.get(0), header.get(1));
-        }
-        return fields;
-    }
-
-    private static void ensureOnlyContains(Map<String, String> fields, List<String> keys)
-            throws MessageProtocolException {
-        for (String key : keys) {
-            System.out.println("CHECKING " + key);
-            if (!fields.containsKey(key)) {
-                throw new MessageProtocolException("Missing field '" + key + '\'');
-            }
-        }
-
-        Optional<String> others = fields
-                .keySet()
-                .stream()
-                .filter(k -> !keys.contains(k))
-                .findAny();
-        if (others.isPresent()) {
-            throw new MessageProtocolException("Unexpected field '" + others.get() + '\'');
         }
     }
 
@@ -226,28 +190,28 @@ public class MembershipMessageProtocol {
 
         switch (parsedMessage.getHeaders().get(0).get(0)) {
             case "JOIN", "REINITIALIZE" -> {
-                Map<String, String> fields = parseBinaryHeaders(headers);
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
                 System.out.println("FIELDS: " + fields);
-                ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
+                GenericMessageProtocol.ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
 
-                return new JoinMessage(
+                return new Join(
                         fields.get("node"),
                         Integer.parseInt(fields.get("counter")),
                         Integer.parseInt(fields.get("port"))
                 );
             }
             case "LEAVE" -> {
-                Map<String, String> fields = parseBinaryHeaders(headers);
-                ensureOnlyContains(fields, List.of("node", "counter"));
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of("node", "counter"));
 
-                return new LeaveMessage(
+                return new Leave(
                         fields.get("node"),
                         Integer.parseInt(fields.get("counter"))
                 );
             }
             case "MEMBERSHIP" -> {
-                Map<String, String> fields = parseBinaryHeaders(headers);
-                ensureOnlyContains(fields, Arrays.asList("members", "log"));
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, Arrays.asList("members", "log"));
 
                 int membersCount = Integer.parseInt(fields.get("members"));
                 int logCount = Integer.parseInt(fields.get("log"));
@@ -259,7 +223,7 @@ public class MembershipMessageProtocol {
                         .collect(Collectors.toList());
                 List<MembershipLogEntry> log = parseLogEntries(parsedMessage.getBody(), membersCount, logCount);
 
-                return new MembershipMessage(members, log);
+                return new Membership(members, log);
             }
             default -> throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');

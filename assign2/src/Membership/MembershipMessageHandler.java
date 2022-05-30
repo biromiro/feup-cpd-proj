@@ -3,13 +3,8 @@ package Membership;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.util.Arrays;
 
 public class MembershipMessageHandler implements Runnable {
     private static final int RECEIVE_BUFFER_SIZE = 2048;
@@ -37,7 +32,7 @@ public class MembershipMessageHandler implements Runnable {
             throw new RuntimeException("Invalid message", e);
         }
 
-        if (parsedMessage instanceof MembershipMessageProtocol.MembershipMessage membershipMessage) {
+        if (parsedMessage instanceof MembershipMessageProtocol.Membership membershipMessage) {
             System.out.println("received membership message");
             handleMembership(membershipMessage);
         } else {
@@ -45,7 +40,7 @@ public class MembershipMessageHandler implements Runnable {
         }
     }
 
-    private void handleMembership(MembershipMessageProtocol.MembershipMessage membershipMessage) {
+    private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
         membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
         // TODO
     }

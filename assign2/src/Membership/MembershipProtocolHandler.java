@@ -1,11 +1,7 @@
 package Membership;
 
-import Storage.MembershipLog;
-import Storage.MembershipLogEntry;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
-
-import java.io.IOException;
 
 public class MembershipProtocolHandler implements Runnable {
     private final String receivedMessage;
@@ -27,39 +23,39 @@ public class MembershipProtocolHandler implements Runnable {
         }
 
         System.out.println("Parsed it");
-        if (parsedMessage instanceof MembershipMessageProtocol.JoinMessage joinMessage) {
+        if (parsedMessage instanceof MembershipMessageProtocol.Join joinMessage) {
             System.out.println("received join message on port "
                     + joinMessage.getPort() + " with counter " + joinMessage.getMembershipCounter());
             handleJoin(joinMessage);
-        } else if (parsedMessage instanceof MembershipMessageProtocol.LeaveMessage leaveMessage) {
+        } else if (parsedMessage instanceof MembershipMessageProtocol.Leave leaveMessage) {
             System.out.println("received leave message with counter " + leaveMessage.getMembershipCounter());
             handleLeave(leaveMessage);
-        } else if (parsedMessage instanceof MembershipMessageProtocol.MembershipMessage membershipMessage) {
+        } else if (parsedMessage instanceof MembershipMessageProtocol.Membership membershipMessage) {
             System.out.println("received membership message");
             handleMembership(membershipMessage);
-        } else if (parsedMessage instanceof MembershipMessageProtocol.ReinitializeMessage reinitializeMessage) {
+        } else if (parsedMessage instanceof MembershipMessageProtocol.Reinitialize reinitializeMessage) {
             System.out.println("received reinitialize message on port"
             + reinitializeMessage.getPort());
             handleReinitialize(reinitializeMessage);
         }
     }
 
-    private void handleReinitialize(MembershipMessageProtocol.ReinitializeMessage reinitializeMessage) {
+    private void handleReinitialize(MembershipMessageProtocol.Reinitialize reinitializeMessage) {
         // TODO maybe should send the membership counter as well on reinitialize message?
         membershipView.setPriority(membershipView.getPriority() - 1);
     }
 
-    private void handleJoin(MembershipMessageProtocol.JoinMessage joinMessage) {
+    private void handleJoin(MembershipMessageProtocol.Join joinMessage) {
         membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
         membershipView.setPriority(membershipView.getPriority() + 1);
     }
 
-    private void handleLeave(MembershipMessageProtocol.LeaveMessage leaveMessage) {
+    private void handleLeave(MembershipMessageProtocol.Leave leaveMessage) {
         membershipView.updateMember(leaveMessage.getId(), leaveMessage.getMembershipCounter());
         // TODO
     }
 
-    private void handleMembership(MembershipMessageProtocol.MembershipMessage membershipMessage) {
+    private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
         membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
         // TODO
     }
