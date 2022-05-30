@@ -1,6 +1,7 @@
 package Membership;
 
 import Connection.MulticastConnection;
+import Message.MembershipLog;
 import Message.MembershipMessageProtocol;
 import Storage.PersistentStorage;
 
@@ -10,21 +11,22 @@ import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.*;
 
-public class MembershipHandler implements MembershipService{
+public class MembershipHandler {
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
-    private final PersistentStorage storage;
     private final String mcastAddr;
     private final int mcastPort;
+    private final String nodeId;
     private final int storePort;
 
+    // TODO why is this unassigned?
     private ThreadPoolExecutor executor;
 
-    public MembershipHandler(PersistentStorage storage, String mcastAddr, int mcastPort, int storePort, ThreadPoolExecutor executor) {
-        this.storage = storage;
+    public MembershipHandler(String mcastAddr, int mcastPort, String nodeId, int storePort) {
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
+        this.nodeId = nodeId;
         this.storePort = storePort;
     }
 
@@ -33,19 +35,11 @@ public class MembershipHandler implements MembershipService{
         return AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort));
     }
 
-    private void incrementCounter(MembershipCounter membershipCounter) {
-        try {
-            membershipCounter.increment();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
-        }
-    }
-
     private void connectToCluster(
             AsynchronousServerSocketChannel serverSocket,
             MulticastConnection clusterConnection,
             int counter) throws IOException {
-        clusterConnection.send(MembershipMessageProtocol.join(counter, this.storePort));
+        clusterConnection.send(MembershipMessageProtocol.join(this.nodeId, this.storePort, counter));
         System.out.println("message sent");
 
         int transmissionCount = 1;
@@ -65,7 +59,7 @@ public class MembershipHandler implements MembershipService{
                 executor.submit(new MembershipMessageHandler(worker));
             } catch (TimeoutException e) {
                 System.out.println("There was a timeout, trying again");
-                clusterConnection.send(MembershipMessageProtocol.join(counter, this.storePort));
+                clusterConnection.send(MembershipMessageProtocol.join(this.nodeId, this.storePort, counter));
                 transmissionCount += 1;
             } catch (InterruptedException ex) {
                 System.out.println("Server was not initialized: " + ex.getMessage());
@@ -77,19 +71,12 @@ public class MembershipHandler implements MembershipService{
         }
     }
 
-    public void join() {
-        MembershipCounter membershipCounter = new MembershipCounter(storage);
-        if (membershipCounter.isJoining()) {
-            System.out.println("Node is already in the cluster.");
-            return;
-        }
-        incrementCounter(membershipCounter);
-
+    public void join(int count) {
         try (AsynchronousServerSocketChannel serverSocket = initializeServerSocket()) {
             System.out.println("Server is listening on port " + this.storePort);
 
             try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
-                connectToCluster(serverSocket, clusterConnection, membershipCounter.get());
+                connectToCluster(serverSocket, clusterConnection, count);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to connect to multicast group.", e);
             }
@@ -100,23 +87,16 @@ public class MembershipHandler implements MembershipService{
         }
     }
 
-    public void leave() {
-        MembershipCounter membershipCounter = new MembershipCounter(storage);
-        if (membershipCounter.isLeaving()) {
-            System.out.println("Node is not in the cluster.");
-            return;
-        }
-        incrementCounter(membershipCounter);
-
+    public void leave(int count) {
         try (MulticastConnection clusterConnection = new MulticastConnection(mcastAddr, mcastPort)) {
-            clusterConnection.send(MembershipMessageProtocol.leave(membershipCounter.get()));
+            clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
             System.out.println("message sent");
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
     }
 
-    public void receive(ThreadPoolExecutor executor) {
+    public void receive(ThreadPoolExecutor executor, MembershipLog membershipLog) {
         MulticastConnection clusterConnection = null;
         try {
             clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
@@ -124,6 +104,6 @@ public class MembershipHandler implements MembershipService{
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
 
-        executor.submit(new MembershipReceiverHandler(clusterConnection));
+        executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipLog));
     }
 }

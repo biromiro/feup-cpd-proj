@@ -1,5 +1,6 @@
 import Connection.MulticastConnection;
 import Membership.*;
+import Message.MembershipLog;
 import Message.MembershipMessageProtocol;
 import Storage.PersistentStorage;
 
@@ -23,36 +24,63 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
     private static final int N_THREADS = 3;
+
+    private final String mcastAddr;
+    private final int mcastPort;
+    private final String nodeId;
+    private final int storePort;
+
+    private final MembershipCounter membershipCounter;
+    private final MembershipLog membershipLog;
+
     private final MembershipHandler membershipHandler;
-    private PersistentStorage storage;
-    private String mcastAddr;
-    private int mcastPort;
-    private String nodeId;
-    private int storePort;
+    private final ThreadPoolExecutor executor;
 
-    private ThreadPoolExecutor executor;
-
-    public Node(PersistentStorage storage, String mcastAddr, int mcastPort, String nodeId, int storePort) {
-        this.storage = storage;
+    public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
+                String nodeId, int storePort) {
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
         this.storePort = storePort;
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
-        this.membershipHandler = new MembershipHandler(storage, mcastAddr, mcastPort, storePort, executor);
 
+        this.membershipCounter = new MembershipCounter(storage);
+        this.membershipLog = new MembershipLog(storage);
+
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
+    }
+
+    private void incrementCounter() {
+        try {
+            membershipCounter.increment();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
+        }
     }
 
     @Override
     public void join() throws RemoteException {
-        membershipHandler.join();
+        if (membershipCounter.isJoin()) {
+            System.out.println("Node is already in the cluster.");
+            return;
+        }
+        incrementCounter();
+
+        membershipHandler.join(membershipCounter.get());
+        membershipHandler.receive(executor, membershipLog);
         // TODO get information from predecessor
     }
 
     @Override
     public void leave() throws RemoteException {
+        if (membershipCounter.isLeave()) {
+            System.out.println("Node is not in the cluster.");
+            return;
+        }
+        incrementCounter();
+
         // TODO transfer information to successor
-        membershipHandler.leave();
+        membershipHandler.leave(membershipCounter.get());
     }
 
     public void bindRMI(String name) {
@@ -93,7 +121,10 @@ public class Node implements MembershipService {
         }
     }
 
-    public void initializeMulticastLoop() {
-        membershipHandler.receive(executor);
+    public void start() {
+        this.initializeTCPLoop();
+        if (membershipCounter.isJoin()) {
+            membershipHandler.receive(executor, membershipLog);
+        }
     }
 }

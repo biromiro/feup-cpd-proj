@@ -2,20 +2,21 @@ package Message;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MembershipMessageProtocol {
-    public static String join(int membershipCounter, int port) {
+    public static String join(String nodeId, int port, int membershipCounter) {
         return new GenericMessageProtocol()
                 .addHeaderEntry("JOIN")
+                .addHeaderEntry("node", nodeId)
                 .addHeaderEntry("port", String.valueOf(port))
                 .addHeaderEntry("counter", String.valueOf(membershipCounter))
                 .toString();
     }
 
-    public static String leave(int membershipCounter) {
+    public static String leave(String nodeId, int membershipCounter) {
         return new GenericMessageProtocol()
                 .addHeaderEntry("LEAVE")
+                .addHeaderEntry("node", nodeId)
                 .addHeaderEntry("counter", String.valueOf(membershipCounter))
                 .toString();
     }
@@ -40,11 +41,17 @@ public class MembershipMessageProtocol {
     }
 
     public static class JoinMessage extends MembershipMessageProtocol {
+        private String node;
         int membershipCounter;
         int port;
-        JoinMessage(int membershipCounter, int port) {
+        JoinMessage(String node, int membershipCounter, int port) {
+            this.node = node;
             this.membershipCounter = membershipCounter;
             this.port = port;
+        }
+
+        public String getId() {
+            return node;
         }
 
         public int getMembershipCounter() {
@@ -57,9 +64,15 @@ public class MembershipMessageProtocol {
     }
 
     public static class LeaveMessage extends MembershipMessageProtocol {
+        private String node;
         int membershipCounter;
-        LeaveMessage(int membershipCounter) {
+        LeaveMessage(String node, int membershipCounter) {
+            this.node = node;
             this.membershipCounter = membershipCounter;
+        }
+
+        public String getId() {
+            return node;
         }
 
         public int getMembershipCounter() {
@@ -161,18 +174,22 @@ public class MembershipMessageProtocol {
         switch (parsedMessage.getHeaders().get(0).get(0)) {
             case "JOIN" -> {
                 Map<String, String> fields = parseBinaryHeaders(headers);
-                ensureOnlyContains(fields, Arrays.asList("counter", "port"));
+                ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
 
                 return new JoinMessage(
+                        fields.get("node"),
                         Integer.parseInt(fields.get("counter")),
-                        Integer.parseInt(fields.get("port")));
+                        Integer.parseInt(fields.get("port"))
+                );
             }
             case "LEAVE" -> {
                 Map<String, String> fields = parseBinaryHeaders(headers);
-                ensureOnlyContains(fields, List.of("counter"));
+                ensureOnlyContains(fields, List.of("node", "counter"));
 
                 return new LeaveMessage(
-                        Integer.parseInt(fields.get("counter")));
+                        fields.get("node"),
+                        Integer.parseInt(fields.get("counter"))
+                );
             }
             case "MEMBERSHIP" -> {
                 Map<String, String> fields = parseBinaryHeaders(headers);

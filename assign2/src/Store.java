@@ -1,3 +1,5 @@
+import Membership.MembershipCounter;
+import Message.MembershipLog;
 import Storage.PersistentStorage;
 
 public class Store {
@@ -9,8 +11,7 @@ public class Store {
         PersistentStorage storage = new PersistentStorage(nodeId);
         Node node = new Node(storage, mcastAddr, mcastPort, nodeId, storePort);
         node.bindRMI(String.valueOf(storePort));
-        node.initializeTCPLoop();
-        node.initializeMulticastLoop();
+        node.start();
     }
 
     public static void main(String[] args) {
