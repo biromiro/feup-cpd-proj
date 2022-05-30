@@ -10,6 +10,7 @@ import java.util.List;
 
 public class MembershipView {
     MembershipLog membershipLog;
+    int priority;
     List<String> members;
 
     public MembershipView(MembershipLog membershipLog) {
@@ -26,6 +27,7 @@ public class MembershipView {
         return members;
     }
 
+    public List<MembershipLogEntry> getLog() { return membershipLog.get(); }
     public void updateMember(String nodeId, int membershipCounter) {
         try {
             membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
@@ -57,5 +59,9 @@ public class MembershipView {
                 this.members.remove(entry.nodeId());
             }
         }
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 }

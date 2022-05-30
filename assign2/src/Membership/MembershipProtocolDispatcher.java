@@ -1,7 +1,6 @@
 package Membership;
 
 import Connection.MulticastConnection;
-import Storage.MembershipLog;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -12,11 +11,14 @@ public class MembershipProtocolDispatcher implements Runnable {
     private final ThreadPoolExecutor executor;
     private MembershipView membershipView;
 
-    MembershipProtocolDispatcher(MulticastConnection connection, ThreadPoolExecutor executor,
+    private final MembershipHandler membershipHandler;
+
+    MembershipProtocolDispatcher(MembershipHandler membershipHandler, MulticastConnection connection, ThreadPoolExecutor executor,
                                  MembershipView membershipView) {
         this.connection = connection;
         this.executor = executor;
         this.membershipView = membershipView;
+        this.membershipHandler = membershipHandler;
     }
     @Override
     public void run() {
@@ -28,6 +30,10 @@ public class MembershipProtocolDispatcher implements Runnable {
                 System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
             } catch (SocketTimeoutException e) {
                 System.out.println("timedout");
+                membershipView.setPriority(membershipView.priority - 1);
+                if (membershipView.priority == 0) {
+                    membershipHandler.sendBroadcastMembership(executor, membershipView);
+                }
                 continue;
             } catch (IOException e) {
                 throw new RuntimeException(e);

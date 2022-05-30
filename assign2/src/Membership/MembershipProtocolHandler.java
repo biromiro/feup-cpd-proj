@@ -35,12 +35,21 @@ public class MembershipProtocolHandler implements Runnable {
         } else if (parsedMessage instanceof MembershipMessageProtocol.MembershipMessage membershipMessage) {
             System.out.println("received membership message");
             handleMembership(membershipMessage);
+        } else if (parsedMessage instanceof MembershipMessageProtocol.ReinitializeMessage reinitializeMessage) {
+            System.out.println("received reinitialize message on port"
+            + reinitializeMessage.getPort());
+            handleReinitialize(reinitializeMessage);
         }
+    }
+
+    private void handleReinitialize(MembershipMessageProtocol.ReinitializeMessage reinitializeMessage) {
+        // TODO maybe should send the membership counter as well on reinitialize message?
+        membershipView.setPriority(membershipView.priority - 1);
     }
 
     private void handleJoin(MembershipMessageProtocol.JoinMessage joinMessage) {
         membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
-        // TODO
+        membershipView.setPriority(membershipView.priority + 1);
     }
 
     private void handleLeave(MembershipMessageProtocol.LeaveMessage leaveMessage) {

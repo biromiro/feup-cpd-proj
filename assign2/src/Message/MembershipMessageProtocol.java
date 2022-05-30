@@ -1,5 +1,6 @@
 package Message;
 
+import Membership.MembershipView;
 import Storage.MembershipLogEntry;
 
 import java.util.*;
@@ -23,21 +24,43 @@ public class MembershipMessageProtocol {
                 .toString();
     }
 
-    public static String membership(List<String> members, List<MembershipLogEntry> log) {
+    public static String membership(MembershipView membershipView) {
         StringBuilder builder = new StringBuilder();
 
-        for (String member : members) {
+        for (String member : membershipView.getMembers()) {
             builder.append(member).append("\n");
         }
         builder.append("\n");
-        for (MembershipLogEntry entry : log) {
+        for (MembershipLogEntry entry : membershipView.getLog()) {
             builder.append(entry.toString()).append("\n");
         }
 
         return new GenericMessageProtocol()
                 .addHeaderEntry("MEMBERSHIP")
-                .addHeaderEntry("members", String.valueOf(members.size()))
-                .addHeaderEntry("log", String.valueOf(log.size()))
+                .addHeaderEntry("members", String.valueOf(membershipView.getMembers().size()))
+                .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
+                .setBody(builder.toString())
+                .toString();
+    }
+
+    public static String reinitialize(String nodeId, int port) {
+        return new GenericMessageProtocol()
+                .addHeaderEntry("REINITIALIZE")
+                .addHeaderEntry("node", nodeId)
+                .addHeaderEntry("port", String.valueOf(port))
+                .toString();
+    }
+
+    public static String membershipLog(MembershipView membershipView) {
+        StringBuilder builder = new StringBuilder();
+
+        for (MembershipLogEntry entry : membershipView.getLog()) {
+            builder.append(entry.toString()).append("\n");
+        }
+
+        return new GenericMessageProtocol()
+                .addHeaderEntry("MEMBERSHIP")
+                .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
                 .setBody(builder.toString())
                 .toString();
     }
@@ -98,6 +121,24 @@ public class MembershipMessageProtocol {
             return log;
         }
     }
+
+    public static class ReinitializeMessage extends MembershipMessageProtocol {
+        private String node;
+        int port;
+        ReinitializeMessage(String node, int port) {
+            this.node = node;
+            this.port = port;
+        }
+
+        public String getId() {
+            return node;
+        }
+
+        public int getPort() {
+            return port;
+        }
+    }
+
 
     private static Map<String, String> parseBinaryHeaders(List<List<String>> headers) throws MessageProtocolException {
         Map<String, String> fields = new HashMap<>();
@@ -174,7 +215,7 @@ public class MembershipMessageProtocol {
                 .subList(1, parsedMessage.getHeaders().size());
 
         switch (parsedMessage.getHeaders().get(0).get(0)) {
-            case "JOIN" -> {
+            case "JOIN", "REINITIALIZE" -> {
                 Map<String, String> fields = parseBinaryHeaders(headers);
                 ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
 

@@ -1,7 +1,6 @@
 package Membership;
 
 import Connection.MulticastConnection;
-import Storage.MembershipLog;
 import Message.MembershipMessageProtocol;
 
 import java.io.IOException;
@@ -44,8 +43,8 @@ public class MembershipHandler {
     private void connectToCluster(
             AsynchronousServerSocketChannel serverSocket,
             MulticastConnection clusterConnection,
-            int counter) throws IOException {
-        clusterConnection.send(MembershipMessageProtocol.join(this.nodeId, this.storePort, counter));
+            String message) throws IOException {
+        clusterConnection.send(message);
         System.out.println("message sent");
 
         int transmissionCount = 1;
@@ -65,7 +64,7 @@ public class MembershipHandler {
                 executor.submit(new MembershipMessageHandler(worker));
             } catch (TimeoutException e) {
                 System.out.println("There was a timeout, trying again");
-                clusterConnection.send(MembershipMessageProtocol.join(this.nodeId, this.storePort, counter));
+                clusterConnection.send(message);
                 transmissionCount += 1;
             } catch (InterruptedException ex) {
                 System.out.println("Server was not initialized: " + ex.getMessage());
@@ -81,7 +80,8 @@ public class MembershipHandler {
         try (AsynchronousServerSocketChannel serverSocket = initializeServerSocket()) {
             System.out.println("Server is listening on port " + this.storePort);
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
-            connectToCluster(serverSocket, clusterConnection, count);
+            String joinMessage = MembershipMessageProtocol.join(this.nodeId, this.storePort, count);
+            connectToCluster(serverSocket, clusterConnection, joinMessage);
             System.out.println("Goodbye socket for membership");
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server.", e);
@@ -99,6 +99,24 @@ public class MembershipHandler {
     }
 
     public void receive(ThreadPoolExecutor executor, MembershipView membershipView) {
-        executor.submit(new MembershipProtocolDispatcher(clusterConnection, executor, membershipView));
+        executor.submit(new MembershipProtocolDispatcher(this, clusterConnection, executor, membershipView));
+    }
+
+    public void reinitialize() {
+        // TODO send multicast saying a crash occurred, asking for 3 membership logs
+        try (AsynchronousServerSocketChannel serverSocket = initializeServerSocket()) {
+            System.out.println("Server is listening on port " + this.storePort);
+            if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
+            String reinitializeMessage = MembershipMessageProtocol.reinitialize(this.nodeId, this.storePort);
+            connectToCluster(serverSocket, clusterConnection, reinitializeMessage);
+            System.out.println("Goodbye socket for membership");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to connect to async server upon reinitialize message.", e);
+        }
+    }
+
+    public void sendBroadcastMembership(ThreadPoolExecutor executor, MembershipView membershipView) {
+        membershipView.setPriority(0);
+        executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
     }
 }
