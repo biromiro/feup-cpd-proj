@@ -44,6 +44,31 @@ public class MembershipHandler {
         int transmissionCount = 1;
         int membershipMessagesCount = 0;
 
+        Future<AsynchronousSocketChannel> future = serverSocket.accept();
+
+        AsynchronousSocketChannel worker;
+        while (transmissionCount < MAX_RETRANSMISSION_TIMES) {
+            try {
+                worker = future.get(MEMBERSHIP_ACCEPT_TIMEOUT, TimeUnit.MILLISECONDS);
+                if (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
+                    future = serverSocket.accept();
+                } else break;
+
+                membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
+                executor.submit(new MembershipMessageHandler(new AsyncTcpConnection(worker), membershipView));
+            } catch (TimeoutException e) {
+                System.out.println("There was a timeout, trying again");
+                clusterConnection.send(message);
+                transmissionCount += 1;
+            } catch (InterruptedException ex) {
+                System.out.println("Server was not initialized: " + ex.getMessage());
+            } catch (ExecutionException ex) {
+                System.out.println("Server exception: " + ex.getMessage());
+                ex.printStackTrace();
+                transmissionCount = MAX_RETRANSMISSION_TIMES;
+            }
+        }
+        /*
         while (transmissionCount < MAX_RETRANSMISSION_TIMES && membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
             try {
                 AsynchronousSocketChannel ch = serverSocket.accept()
@@ -63,7 +88,7 @@ public class MembershipHandler {
                 ex.printStackTrace();
                 break;
             }
-        }
+        }*/
     }
 
     public void join(int count) {

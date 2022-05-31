@@ -90,23 +90,26 @@ public class Node implements MembershipService {
     }
 
     public void initializeTCPLoop() {
-        try (AsyncServer listener = new AsyncServer(this.storePort)) {
-            listener.loop(new AsyncServer.ConnectionHandler() {
-                @Override
-                public void completed(AsyncTcpConnection channel) {
-                    // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                    // handle this connection
-                    executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
-                }
-
-                @Override
-                public void failed(Throwable exc) {
-                    exc.printStackTrace();
-                }
-            });
+        AsyncServer listener;
+        try {
+            listener = new AsyncServer(this.storePort);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        listener.loop(new AsyncServer.ConnectionHandler() {
+            @Override
+            public void completed(AsyncTcpConnection channel) {
+                // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
+                // handle this connection
+                executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
+            }
+
+            @Override
+            public void failed(Throwable exc) {
+                exc.printStackTrace();
+            }
+        });
     }
 
     public void start() {
