@@ -43,6 +43,7 @@ public class MulticastConnection implements AutoCloseable {
         return socket.isClosed();
     }
 
+    @Override
     public void close() throws IOException {
         this.leave();
         socket.close();

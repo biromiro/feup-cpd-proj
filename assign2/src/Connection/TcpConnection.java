@@ -6,12 +6,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
 
-public class UnicastConnection implements AutoCloseable {
+public class TcpConnection implements AutoCloseable {
     private final PrintWriter writer;
     private final BufferedReader reader;
     private final Socket socket;
 
-    public UnicastConnection(String host, int port) throws IOException {
+    public TcpConnection(String host, int port) throws IOException {
         socket = new Socket(host, port);
         writer = new PrintWriter(socket.getOutputStream());
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -31,6 +31,7 @@ public class UnicastConnection implements AutoCloseable {
         return content.toString();
     }
 
+    @Override
     public void close() throws IOException {
         reader.close();
         writer.close();

@@ -9,12 +9,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class MembershipProtocolDispatcher implements Runnable {
     private final MulticastConnection connection;
     private final ThreadPoolExecutor executor;
-    private MembershipView membershipView;
+    private final MembershipView membershipView;
 
     private final MembershipHandler membershipHandler;
 
-    MembershipProtocolDispatcher(MembershipHandler membershipHandler, MulticastConnection connection, ThreadPoolExecutor executor,
-                                 MembershipView membershipView) {
+    MembershipProtocolDispatcher(MembershipHandler membershipHandler, MulticastConnection connection,
+                                 ThreadPoolExecutor executor, MembershipView membershipView) {
         this.connection = connection;
         this.executor = executor;
         this.membershipView = membershipView;
@@ -39,7 +39,6 @@ public class MembershipProtocolDispatcher implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            System.out.println("Gonna dispatch it");
             executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView));
         }
     }

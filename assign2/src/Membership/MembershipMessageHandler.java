@@ -1,39 +1,42 @@
 package Membership;
 
+import Connection.AsyncTcpConnection;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
-import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-
 public class MembershipMessageHandler implements Runnable {
-    private static final int RECEIVE_BUFFER_SIZE = 2048;
-    private final AsynchronousSocketChannel worker;
+    private final AsyncTcpConnection worker;
     private final MembershipView membershipView;
 
-    MembershipMessageHandler(AsynchronousSocketChannel worker, MembershipView membershipView) {
+    MembershipMessageHandler(AsyncTcpConnection worker, MembershipView membershipView) {
         this.worker = worker;
         this.membershipView = membershipView;
     }
 
     @Override
     public void run() {
-        // read until token is received
-        ByteBuffer buffer = ByteBuffer.allocate(RECEIVE_BUFFER_SIZE);
-        worker.read(buffer);
+        worker.read(new AsyncTcpConnection.ReadHandler() {
+            @Override
+            public void completed(Integer result, String message) {
+                handleMessage(message);
+            }
 
-        String receivedMessage = new String(buffer.array(), buffer.arrayOffset(), buffer.array().length);
+            @Override
+            public void failed(Throwable exc) {
+                throw new RuntimeException("Failed to read from socket", exc);
+            }
+        });
+    }
 
-        System.out.println("Gonna parse it");
+    private void handleMessage(String message) {
         MembershipMessageProtocol parsedMessage;
         try {
-            parsedMessage = MembershipMessageProtocol.parse(receivedMessage);
+            parsedMessage = MembershipMessageProtocol.parse(message);
         } catch (MessageProtocolException e) {
             throw new RuntimeException("Invalid message", e);
         }
 
         if (parsedMessage instanceof MembershipMessageProtocol.Membership membershipMessage) {
-            System.out.println("received membership message");
             handleMembership(membershipMessage);
         } else {
             throw new RuntimeException("Unexpected message " + parsedMessage);
@@ -41,6 +44,7 @@ public class MembershipMessageHandler implements Runnable {
     }
 
     private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
+        System.out.println("received membership message");
         membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
         // TODO
     }

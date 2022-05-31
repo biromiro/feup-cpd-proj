@@ -1,13 +1,11 @@
-import KVStore.Cluster;
+import Connection.AsyncServer;
+import Connection.AsyncTcpConnection;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
 import Storage.*;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.CompletionHandler;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -34,7 +32,7 @@ public class Node implements MembershipService {
 
         System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort, membershipView, executor);
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
     private void incrementCounter() {
@@ -92,18 +90,18 @@ public class Node implements MembershipService {
     }
 
     public void initializeTCPLoop() {
-        try (AsynchronousServerSocketChannel listener =
-                     AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort))) {
-            listener.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>() {
-                public void completed(AsynchronousSocketChannel ch, Void att) {
-                    // accept the next connection
-                    listener.accept(null, this);
+        try (AsyncServer listener = new AsyncServer(this.storePort)) {
+            listener.loop(new AsyncServer.ConnectionHandler() {
+                @Override
+                public void completed(AsyncTcpConnection channel) {
                     // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
                     // handle this connection
-                    executor.submit(new KVStoreMessageHandler(nodeId, ch, membershipView));
+                    executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
                 }
-                public void failed(Throwable exc, Void att) {
 
+                @Override
+                public void failed(Throwable exc) {
+                    exc.printStackTrace();
                 }
             });
         } catch (IOException e) {
