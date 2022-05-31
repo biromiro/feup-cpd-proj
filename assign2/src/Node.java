@@ -31,8 +31,9 @@ public class Node implements MembershipService {
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog);
 
-        System.out.println("There are " + Runtime.getRuntime().availableProcessors()*4 + " threads in the pool.");
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(NUM_THREADS);
+        int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
+        System.out.println("There are " + numberThreads + " threads in the pool.");
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
@@ -102,7 +103,7 @@ public class Node implements MembershipService {
             @Override
             public void completed(AsyncTcpConnection channel) {
                 // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                // handle this connection
+                // TODO does it make sense to submit a thread here? Async IO takes care of it, right?
                 executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
             }
 
