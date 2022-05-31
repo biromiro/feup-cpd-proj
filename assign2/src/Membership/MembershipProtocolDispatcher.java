@@ -23,21 +23,20 @@ public class MembershipProtocolDispatcher implements Runnable {
     public void run() {
         System.out.println("waiting for messages");
         while(!connection.isClosed()) {
-            String receivedMessage;
             try {
-                receivedMessage = connection.receive();
-                // System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
+                String receivedMessage = connection.receive();
+                executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor,
+                        membershipHandler));
             } catch (SocketTimeoutException e) {
-                membershipView.incrementBroadcasterIndex();
-                if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
-                    membershipHandler.sendBroadcastMembership();
-                }
-                continue;
+                // TODO handle crash
+                membershipHandler.sendBroadcastMembership();
+                //membershipView.incrementBroadcasterIndex();
+                //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
+                ///    membershipHandler.sendBroadcastMembership();
+                //}
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-
-            executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor));
         }
     }
 }

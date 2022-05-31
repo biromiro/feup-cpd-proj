@@ -23,7 +23,6 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void send(String message) throws IOException {
-        //System.out.println("sending " +  group + " " +  port);
         socket.send(new DatagramPacket(message.getBytes(), message.length(), group, port));
     }
 
@@ -51,7 +50,9 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void leave() throws IOException {
+        System.out.println("Leaving group");
         if (joined) {
+            System.out.println("Leaving group should hv left");
             socket.leaveGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
             this.joined = false;
         }

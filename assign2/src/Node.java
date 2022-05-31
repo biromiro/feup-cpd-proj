@@ -5,13 +5,11 @@ import Membership.*;
 import Storage.*;
 
 import java.io.IOException;
-import java.nio.channels.AsynchronousSocketChannel;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
@@ -20,7 +18,7 @@ public class Node implements MembershipService {
     private final MembershipCounter membershipCounter;
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
-    private final ScheduledThreadPoolExecutor executor;
+    private final ThreadPoolExecutor executor;
     private static final int NUM_THREADS = 16;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
@@ -35,7 +33,7 @@ public class Node implements MembershipService {
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
         int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
         System.out.println("There are " + numberThreads + " threads in the pool.");
-        this.executor = (ScheduledThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
@@ -45,13 +43,12 @@ public class Node implements MembershipService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
         }
-
-        this.membershipView.updateMember(nodeId, membershipCounter.get());
     }
 
     @Override
     public void join() throws RemoteException {
         if (membershipCounter.isJoin()) {
+            // TODO faz sentido isto ser dito no cliente ou no servidor?
             System.out.println("Node is already in the cluster.");
             return;
         }
@@ -86,10 +83,8 @@ public class Node implements MembershipService {
                 registry.rebind(name, membershipService);
             } catch (RemoteException ex) {
                 System.err.println("Failed to connect to registry.");
-                return;
             }
         }
-        System.out.println("Server ready");
     }
 
     public void initializeTCPLoop() {

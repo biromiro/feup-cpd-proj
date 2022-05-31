@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class MembershipLog {
     private static final String MEMBERSHIP_LOG_FILE = "membership_log";
@@ -48,31 +49,35 @@ public class MembershipLog {
         return sb.toString();
     }
 
-    private void addEntry(MembershipLogEntry entry) {
+    private int addEntry(MembershipLogEntry entry) {
         Optional<MembershipLogEntry> oldEntry = this.get()
                 .stream()
                 .filter(e -> e.nodeId().equals(entry.nodeId()))
                 .findAny();
         if (oldEntry.isPresent()) {
             if (oldEntry.get().membershipCounter() >= entry.membershipCounter()) {
-                return;
+                return oldEntry.get().membershipCounter();
             }
             this.get().remove(oldEntry.get());
         }
         this.get().add(entry);
+        return entry.membershipCounter();
     }
 
-    public void log(MembershipLogEntry entry) {
-        this.addEntry(entry);
+    public int log(MembershipLogEntry entry) {
+        int counter = this.addEntry(entry);
         this.save();
+        return counter;
     }
 
-    public void log(List<MembershipLogEntry> entries) {
-        for (MembershipLogEntry entry: entries) {
-            System.out.println("Logging " + entry);
-            this.addEntry(entry);
-        }
+    public List<MembershipLogEntry> log(List<MembershipLogEntry> entries) {
+        List<MembershipLogEntry> counters = entries
+                .stream()
+                .map(entry -> new MembershipLogEntry(entry.nodeId(), this.addEntry(entry)))
+                .collect(Collectors.toList());
+
         this.save();
+        return counters;
     }
 
     private void save() {

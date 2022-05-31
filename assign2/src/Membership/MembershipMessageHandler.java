@@ -44,7 +44,6 @@ public class MembershipMessageHandler implements Runnable {
     }
 
     private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
-        System.out.println("received membership message");
         membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
         // TODO
     }

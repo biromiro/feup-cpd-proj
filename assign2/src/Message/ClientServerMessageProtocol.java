@@ -1,12 +1,8 @@
 package Message;
 
-import Storage.MembershipLogEntry;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class ClientServerMessageProtocol {
     public static String get(String key) {
@@ -72,17 +68,7 @@ public class ClientServerMessageProtocol {
 
     public static ClientServerMessageProtocol parse(String message) throws MessageProtocolException {
         GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
-        if (parsedMessage.getHeaders().size() == 0) {
-            throw new MessageProtocolException("Message is missing headers");
-        }
-        if (parsedMessage.getHeaders().get(0).size() != 1) {
-            throw new MessageProtocolException("Unknown message '"
-                    + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
-        }
-
-        List<List<String>> headers = parsedMessage
-                .getHeaders()
-                .subList(1, parsedMessage.getHeaders().size());
+        List<List<String>> headers = GenericMessageProtocol.firstHeaderIsMessageType(parsedMessage.getHeaders());
 
         switch (parsedMessage.getHeaders().get(0).get(0)) {
             case "GET" -> {
