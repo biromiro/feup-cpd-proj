@@ -14,6 +14,7 @@ public class MulticastConnection implements AutoCloseable {
     private boolean joined = false;
 
     public MulticastConnection(String host, int port) throws IOException {
+        // TODO Chnage host to null
         this.port = port;
         this.host = host;
         group = InetAddress.getByName(host);
@@ -22,7 +23,7 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void send(String message) throws IOException {
-        System.out.println("sending " +  group + " " +  port);
+        //System.out.println("sending " +  group + " " +  port);
         socket.send(new DatagramPacket(message.getBytes(), message.length(), group, port));
     }
 

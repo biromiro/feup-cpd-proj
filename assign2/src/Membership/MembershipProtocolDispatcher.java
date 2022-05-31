@@ -10,7 +10,6 @@ public class MembershipProtocolDispatcher implements Runnable {
     private final MulticastConnection connection;
     private final ThreadPoolExecutor executor;
     private final MembershipView membershipView;
-
     private final MembershipHandler membershipHandler;
 
     MembershipProtocolDispatcher(MembershipHandler membershipHandler, MulticastConnection connection,
@@ -27,11 +26,10 @@ public class MembershipProtocolDispatcher implements Runnable {
             String receivedMessage;
             try {
                 receivedMessage = connection.receive();
-                System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
+                // System.out.println("MESSAGE: b\"\"\"\n" + receivedMessage + "\n\"\"\"");
             } catch (SocketTimeoutException e) {
-                System.out.println("timedout");
-                membershipView.setPriority(membershipView.getPriority() - 1);
-                if (membershipView.getPriority() == 0) {
+                membershipView.incrementBroadcasterIndex();
+                if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
                     membershipHandler.sendBroadcastMembership();
                 }
                 continue;
@@ -39,7 +37,7 @@ public class MembershipProtocolDispatcher implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView));
+            executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor));
         }
     }
 }

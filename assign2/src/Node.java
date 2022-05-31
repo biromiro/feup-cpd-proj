@@ -11,6 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Node implements MembershipService {
@@ -19,7 +20,7 @@ public class Node implements MembershipService {
     private final MembershipCounter membershipCounter;
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
@@ -28,10 +29,10 @@ public class Node implements MembershipService {
 
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
-        this.membershipView = new MembershipView(membershipLog);
+        this.membershipView = new MembershipView(membershipLog, this.nodeId);
 
         System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        this.executor = (ScheduledThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
@@ -54,7 +55,6 @@ public class Node implements MembershipService {
         incrementCounter();
 
         membershipHandler.join(membershipCounter.get());
-        membershipHandler.sendBroadcastMembership();
         membershipHandler.receive();
         // TODO get information from predecessor
     }
@@ -92,7 +92,7 @@ public class Node implements MembershipService {
     public void initializeTCPLoop() {
         AsyncServer listener;
         try {
-            listener = new AsyncServer(this.storePort);
+            listener = new AsyncServer(this.storePort, executor);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -106,9 +106,7 @@ public class Node implements MembershipService {
             }
 
             @Override
-            public void failed(Throwable exc) {
-                exc.printStackTrace();
-            }
+            public void failed(Throwable exc) { exc.printStackTrace(); }
         });
     }
 
@@ -116,7 +114,6 @@ public class Node implements MembershipService {
         this.initializeTCPLoop();
         if (membershipCounter.isJoin()) {
             membershipHandler.reinitialize();
-            membershipHandler.sendBroadcastMembership();
             membershipHandler.receive();
         }
     }

@@ -19,13 +19,13 @@ public class MembershipEchoMessageSender implements Runnable {
         this.clusterConnection = clusterConnection;
         this.membershipView = membershipView;
     }
-
     @Override
     public void run() {
-        if (membershipView.getPriority() == 0) {
+        if (membershipView.isBroadcasting()) {
             try {
                 clusterConnection.send(MembershipMessageProtocol.membershipLog(membershipView));
                 CompletableFuture.delayedExecutor(TIMEOUT, TimeUnit.MILLISECONDS).execute(() -> {
+                    System.out.println("Sent periodic message.");
                     executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
                 });
             } catch (IOException e) {

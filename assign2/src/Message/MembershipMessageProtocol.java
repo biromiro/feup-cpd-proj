@@ -37,6 +37,7 @@ public class MembershipMessageProtocol {
 
         return new GenericMessageProtocol()
                 .addHeaderEntry("MEMBERSHIP")
+                .addHeaderEntry("node", membershipView.getNodeId())
                 .addHeaderEntry("members", String.valueOf(membershipView.getMembers().size()))
                 .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
                 .setBody(builder.toString())
@@ -60,6 +61,7 @@ public class MembershipMessageProtocol {
 
         return new GenericMessageProtocol()
                 .addHeaderEntry("MEMBERSHIP")
+                .addHeaderEntry("node", membershipView.getNodeId())
                 .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
                 .setBody(builder.toString())
                 .toString();
@@ -108,9 +110,12 @@ public class MembershipMessageProtocol {
     }
 
     public static class Membership extends MembershipMessageProtocol {
+
+        private final String node;
         private List<String> members;
         private List<MembershipLogEntry> log;
-        public Membership(List<String> members, List<MembershipLogEntry> log) {
+        public Membership(String node, List<String> members, List<MembershipLogEntry> log) {
+            this.node = node;
             this.members = members;
             this.log = log;
         }
@@ -122,6 +127,8 @@ public class MembershipMessageProtocol {
         public List<MembershipLogEntry> getLog() {
             return log;
         }
+
+        public String getId() { return node; }
     }
 
     public static class Reinitialize extends MembershipMessageProtocol {
@@ -139,6 +146,21 @@ public class MembershipMessageProtocol {
         public int getPort() {
             return port;
         }
+    }
+
+    public static class MembershipLog extends MembershipMessageProtocol {
+
+        private final String node;
+        private List<MembershipLogEntry> log;
+        public MembershipLog(String node, List<MembershipLogEntry> log) {
+            this.node = node;
+            this.log = log;
+        }
+        public List<MembershipLogEntry> getLog() {
+            return log;
+        }
+
+        public String getId() { return node; }
     }
 
     private static List<MembershipLogEntry> parseLogEntries(String body, int membersCount, int logCount)
@@ -223,7 +245,7 @@ public class MembershipMessageProtocol {
                         .collect(Collectors.toList());
                 List<MembershipLogEntry> log = parseLogEntries(parsedMessage.getBody(), membersCount, logCount);
 
-                return new Membership(members, log);
+                return new Membership(fields.get("node"), members, log);
             }
             default -> throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');

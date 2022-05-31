@@ -7,22 +7,23 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class AsyncServer implements AutoCloseable {
     private final InetSocketAddress address;
     private final AsynchronousServerSocketChannel socket;
 
-    public AsyncServer(InetSocketAddress address) throws IOException {
+    public AsyncServer(InetSocketAddress address, ThreadPoolExecutor executor) throws IOException {
         this.address = address;
         this.socket = AsynchronousServerSocketChannel.open().bind(address);
     }
 
-    public AsyncServer(int port) throws IOException {
-        this(new InetSocketAddress(port));
+    public AsyncServer(int port, ThreadPoolExecutor executor) throws IOException {
+        this(new InetSocketAddress(port), executor);
     }
 
-    public AsyncServer() throws IOException {
-        this(new InetSocketAddress(0));
+    public AsyncServer(ThreadPoolExecutor executor) throws IOException {
+        this(new InetSocketAddress(0), executor);
     }
 
     @Override

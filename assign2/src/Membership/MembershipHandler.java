@@ -11,14 +11,13 @@ import java.util.concurrent.*;
 
 public class MembershipHandler {
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
-    private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 500;
+    private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 1000;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
     private final String mcastAddr;
     private final int mcastPort;
     private final String nodeId;
     private final MembershipView membershipView;
     private MulticastConnection clusterConnection;
-
     private final ThreadPoolExecutor executor;
 
     public MembershipHandler(String mcastAddr, int mcastPort, String nodeId,
@@ -28,7 +27,7 @@ public class MembershipHandler {
         this.nodeId = nodeId;
         this.membershipView = membershipView;
         try {
-            this.clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
+            this.clusterConnection = new MulticastConnection(null, mcastPort);
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
@@ -92,10 +91,13 @@ public class MembershipHandler {
     }
 
     public void join(int count) {
-        try (AsyncServer serverSocket = new AsyncServer()) {
+        try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             String joinMessage = MembershipMessageProtocol.join(this.nodeId, serverSocket.getPort(), count);
             connectToCluster(serverSocket, clusterConnection, joinMessage);
+            if (membershipView.isBroadcaster() && !membershipView.isBroadcasting())
+                this.sendBroadcastMembership();
+            System.out.println("Goodbye socket for membership");
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server.", e);
         }
@@ -105,6 +107,7 @@ public class MembershipHandler {
         try  {
             clusterConnection.leave();
             clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
+            membershipView.stopBroadcasting();
             clusterConnection.close();
             System.out.println("message sent");
         } catch (IOException e) {
@@ -118,17 +121,21 @@ public class MembershipHandler {
 
     public void reinitialize() {
         // TODO send multicast saying a crash occurred, asking for 3 membership logs
-        try (AsyncServer serverSocket = new AsyncServer()) {
+        try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             String reinitializeMessage = MembershipMessageProtocol.reinitialize(this.nodeId, serverSocket.getPort());
             connectToCluster(serverSocket, clusterConnection, reinitializeMessage);
+            if (membershipView.isBroadcaster() && !membershipView.isBroadcasting())
+                this.sendBroadcastMembership();
+            System.out.println("Goodbye socket for membership");
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server upon reinitialize message.", e);
         }
     }
 
     public void sendBroadcastMembership() {
-        membershipView.setPriority(0);
+        membershipView.startBroadcasting();
         executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
     }
 }

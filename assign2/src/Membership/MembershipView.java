@@ -11,16 +11,21 @@ import java.util.List;
 public class MembershipView {
     private final MembershipLog membershipLog;
     private Cluster cluster;
-    private int priority;
+    public int broadcasterIndex;
+    private String currentNodeID;
+    private boolean isBroadcasting;
 
-    public MembershipView(MembershipLog membershipLog) {
+    public MembershipView(MembershipLog membershipLog, String currentNodeID) {
         this.membershipLog = membershipLog;
+        this.currentNodeID = currentNodeID;
         this.cluster = new Cluster();
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
                 cluster.add(entry.nodeId());
             }
         }
+        this.broadcasterIndex = 0;
+        this.isBroadcasting = false;
     }
 
     public Cluster getCluster() {
@@ -52,7 +57,8 @@ public class MembershipView {
             throw new RuntimeException("Couldn't write log to file.", e);
         }
 
-        //TODO recycle hashes as much as possible
+        // TODO recycle hashes as much as possible
+        // TODO merge clusters
         this.cluster = new Cluster(members);
 
         for (MembershipLogEntry entry : membershipLog.get()) {
@@ -66,11 +72,21 @@ public class MembershipView {
         }
     }
 
-    public void setPriority(int priority) {
-        this.priority = priority;
+    public boolean isBroadcasting() { return isBroadcasting; }
+    public void startBroadcasting() { this.isBroadcasting = true; }
+
+    public void stopBroadcasting() { this.isBroadcasting = false; }
+
+    public boolean isBroadcaster() {
+        List<String> nodeIDs = this.getMembers().stream().sorted().toList();
+        return nodeIDs.get(broadcasterIndex).equals(currentNodeID);
+    }
+    public void incrementBroadcasterIndex() { this.broadcasterIndex++; }
+    public void setBroadcasterIndex(int broadcasterIndex) { this.broadcasterIndex = broadcasterIndex; }
+
+    public String getNodeId() {
+        return currentNodeID;
     }
 
-    public int getPriority() {
-        return this.priority;
-    }
+    public int getBroadcasterIndex() { return broadcasterIndex; }
 }
