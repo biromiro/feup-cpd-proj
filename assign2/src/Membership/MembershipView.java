@@ -38,11 +38,8 @@ public class MembershipView {
 
     public List<MembershipLogEntry> getLog() { return membershipLog.get(); }
     public void updateMember(String nodeId, int membershipCounter) {
-        try {
-            membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
-        } catch (IOException e) {
-            throw new RuntimeException("Couldn't write log to file.", e);
-        }
+        membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
+
         if (MembershipCounter.isJoin(membershipCounter)) {
             cluster.add(nodeId);
         } else {
@@ -51,11 +48,7 @@ public class MembershipView {
     }
 
     public void merge(List<String> members, List<MembershipLogEntry> log) {
-        try {
-            this.membershipLog.log(log);
-        } catch (IOException e) {
-            throw new RuntimeException("Couldn't write log to file.", e);
-        }
+        this.membershipLog.log(log);
 
         // TODO recycle hashes as much as possible
         // TODO merge clusters

@@ -37,7 +37,7 @@ public class AsyncTcpConnection implements AutoCloseable {
     }
 
     public interface WriteHandler {
-        void completed(Integer result, String message);
+        void completed(Integer result);
         void failed(Throwable exc);
     }
 
@@ -62,8 +62,7 @@ public class AsyncTcpConnection implements AutoCloseable {
         socket.write(buffer, null, new CompletionHandler<Integer, Void>() {
             @Override
             public void completed(Integer result, Void attachment) {
-
-                handler.completed(result, message);
+                handler.completed(result);
             }
 
             @Override

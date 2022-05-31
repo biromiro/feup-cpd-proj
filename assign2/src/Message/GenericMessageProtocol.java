@@ -13,7 +13,7 @@ public class GenericMessageProtocol {
     public GenericMessageProtocol(String message) {
         header = message.lines()
                 .takeWhile(line -> !line.isEmpty())
-                .map(line -> Arrays.asList(line.split(" ")))
+                .map(line -> Arrays.asList(line.trim().split("\\s+")))
                 .collect(Collectors.toList());
 
         body = message.substring(message.indexOf("\n\n") + 2);

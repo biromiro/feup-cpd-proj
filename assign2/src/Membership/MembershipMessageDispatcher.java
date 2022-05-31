@@ -8,8 +8,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class MembershipMessageDispatcher implements Runnable{
     private final int port;
-    private ThreadPoolExecutor executor;
-    private MembershipView membershipView;
+    private final ThreadPoolExecutor executor;
+    private final MembershipView membershipView;
 
     MembershipMessageDispatcher(ThreadPoolExecutor executor, MembershipView membershipView, int port) {
         this.executor = executor;
@@ -20,21 +20,20 @@ public class MembershipMessageDispatcher implements Runnable{
     @Override
     public void run() {
         AsyncTcpConnection connection = new AsyncTcpConnection(executor, port);
-        connection.write(MembershipMessageProtocol.membership(membershipView),
-                new AsyncTcpConnection.WriteHandler() {
-                    @Override
-                    public void completed(Integer result, String message) {
-                        try {
-                            connection.close();
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    @Override
-                    public void failed(Throwable exc) {
-                        throw new RuntimeException("Failed to write to socket", exc);
-                    }
-                });
+        connection.write(MembershipMessageProtocol.membership(membershipView), new AsyncTcpConnection.WriteHandler() {
+            @Override
+            public void completed(Integer result) {
+                try {
+                    connection.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            @Override
+            public void failed(Throwable exc) {
+                throw new RuntimeException("Failed to write to socket", exc);
+            }
+        });
 
     }
 }

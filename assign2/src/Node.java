@@ -21,6 +21,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final ScheduledThreadPoolExecutor executor;
+    private static final int NUM_THREADS = 16;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
@@ -31,8 +32,10 @@ public class Node implements MembershipService {
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
 
-        System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
-        this.executor = (ScheduledThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
+        int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
+        System.out.println("There are " + numberThreads + " threads in the pool.");
+        this.executor = (ScheduledThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
@@ -101,7 +104,7 @@ public class Node implements MembershipService {
             @Override
             public void completed(AsyncTcpConnection channel) {
                 // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                // handle this connection
+                // TODO does it make sense to submit a thread here? Async IO takes care of it, right?
                 executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
             }
 

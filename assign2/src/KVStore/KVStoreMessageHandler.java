@@ -5,9 +5,6 @@ import Membership.MembershipView;
 import Message.ClientServerMessageProtocol;
 import Message.MessageProtocolException;
 
-import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-
 public class KVStoreMessageHandler implements Runnable {
     private final String localNodeId;
     private final AsyncTcpConnection worker;
