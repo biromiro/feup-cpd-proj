@@ -20,7 +20,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final ThreadPoolExecutor executor;
-    private static final int NUM_THREADS = 32;
+    private static final int NUM_THREADS = 16;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
