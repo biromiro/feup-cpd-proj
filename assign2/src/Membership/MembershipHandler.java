@@ -34,7 +34,7 @@ public class MembershipHandler {
         this.executor = executor;
     }
 
-    private void connectToCluster(
+    private boolean connectToCluster(
             AsyncServer serverSocket,
             MulticastConnection clusterConnection,
             String message) throws IOException {
@@ -61,17 +61,20 @@ public class MembershipHandler {
                 System.out.println("Server was not initialized: " + ex.getMessage());
             } catch (ExecutionException ex) {
                 System.out.println("Server exception: " + ex.getMessage());
-                ex.printStackTrace();
-                transmissionCount = MAX_RETRANSMISSION_TIMES;
+                break;
             }
         }
+
+        return membershipMessagesCount != 0;
     }
 
     public void join(int count) {
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             String joinMessage = MembershipMessageProtocol.join(this.nodeId, serverSocket.getPort(), count);
-            connectToCluster(serverSocket, clusterConnection, joinMessage);
+            if (!connectToCluster(serverSocket, clusterConnection, joinMessage)) {
+                membershipView.updateMember(nodeId, count);
+            }
             //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
             //    this.sendBroadcastMembership();
             //}
