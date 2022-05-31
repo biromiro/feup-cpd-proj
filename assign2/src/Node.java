@@ -31,6 +31,7 @@ public class Node implements MembershipService {
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog);
 
+        // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
         int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
