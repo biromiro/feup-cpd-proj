@@ -20,6 +20,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final ThreadPoolExecutor executor;
+    private static final int NUM_THREADS = 32;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
@@ -30,8 +31,8 @@ public class Node implements MembershipService {
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog);
 
-        System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        System.out.println("There are " + Runtime.getRuntime().availableProcessors()*4 + " threads in the pool.");
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(NUM_THREADS);
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
