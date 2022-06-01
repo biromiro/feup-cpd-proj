@@ -6,8 +6,7 @@ public class Store {
     }
 
     private static void startStore(String mcastAddr, int mcastPort, String nodeId, int storePort) {
-        PersistentStorage storage = new PersistentStorage(nodeId);
-        Node node = new Node(storage, mcastAddr, mcastPort, nodeId, storePort);
+        Node node = new Node(mcastAddr, mcastPort, nodeId, storePort);
         node.bindRMI(String.valueOf(storePort));
         node.start();
     }

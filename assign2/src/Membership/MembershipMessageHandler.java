@@ -5,7 +5,6 @@ import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
 
 public class MembershipMessageHandler implements Runnable {
     private final AsyncTcpConnection worker;
@@ -53,6 +52,5 @@ public class MembershipMessageHandler implements Runnable {
 
     private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
         membershipView.merge(membershipMessage.getMembers(), membershipMessage.getLog());
-        // TODO
     }
 }

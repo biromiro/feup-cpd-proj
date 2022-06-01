@@ -1,22 +1,31 @@
 package Storage;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.util.Scanner;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.*;
 
 public class PersistentStorage {
     private static final String BASE_FOLDER = "storage";
     private static final int READ_BUFFER_SIZE = 1024;
+    private final ThreadPoolExecutor executor;
     private final String id;
 
-    public PersistentStorage(String id) {
+    public PersistentStorage(String id, ThreadPoolExecutor executor) {
         this.id = id;
+        this.executor = executor;
         File file = new File(BASE_FOLDER, this.id);
         if (!file.exists()) {
             if (!file.mkdirs()) {
@@ -28,7 +37,19 @@ public class PersistentStorage {
     }
 
     public AsynchronousFileChannel getFile(String fileName, OpenOption... options) throws IOException {
-        return AsynchronousFileChannel.open(getPath(fileName), options);
+        Set<OpenOption> set;
+        if (options.length == 0) {
+            set = Collections.emptySet();
+        } else {
+            set = new HashSet<>();
+            Collections.addAll(set, options);
+        }
+
+        return AsynchronousFileChannel.open(
+                getPath(fileName),
+                Arrays.stream(options).collect(Collectors.toSet()),
+                this.executor
+        );
     }
 
     public File getFileSync(String fileName) {

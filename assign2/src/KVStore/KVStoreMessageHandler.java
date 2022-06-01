@@ -5,7 +5,7 @@ import Membership.MembershipView;
 import Message.ClientServerMessageProtocol;
 import Message.MessageProtocolException;
 
-public class KVStoreMessageHandler implements Runnable {
+public class KVStoreMessageHandler {
     private final String localNodeId;
     private final AsyncTcpConnection worker;
     private final MembershipView membershipView;
@@ -16,7 +16,6 @@ public class KVStoreMessageHandler implements Runnable {
         this.membershipView = membershipView;
     }
 
-    @Override
     public void run() {
         worker.read(new AsyncTcpConnection.ReadHandler() {
             @Override

@@ -54,9 +54,9 @@ public class MembershipHandler {
             AsyncServer serverSocket,
             MulticastConnection clusterConnection,
             MembershipMessageType type, int count) throws IOException {
-        String message = null;
-        Map<String, Integer> blacklist = new ConcurrentHashMap<>();
 
+        Map<String, Integer> blacklist = new ConcurrentHashMap<>();
+        String message;
         try {
             message = this.getMessage(type, serverSocket.getPort(), count, blacklist);
         } catch (MessageProtocolException e) {
@@ -71,7 +71,7 @@ public class MembershipHandler {
         while (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
             try {
                 AsynchronousSocketChannel worker = future.get(MEMBERSHIP_ACCEPT_TIMEOUT, TimeUnit.MILLISECONDS);
-                membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
+                membershipMessagesCount += 1;
                 if (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
                     future = serverSocket.accept();
                 }
@@ -91,7 +91,7 @@ public class MembershipHandler {
                     } catch (MessageProtocolException ex) {
                         throw new RuntimeException(ex.getMessage(), ex);
                     }
-                    // TODO nodes that have already replied shouldn't reply again, UNLESS their membership view changed
+
                     clusterConnection.send(message);
                 }
             } catch (InterruptedException ex) {
@@ -113,9 +113,6 @@ public class MembershipHandler {
                 membershipView.updateMember(nodeId, count);
                 this.sendBroadcastMembership(0);
             }
-            //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
-            //    this.sendBroadcastMembership();
-            //}
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server.", e);
@@ -139,7 +136,6 @@ public class MembershipHandler {
     }
 
     public void reinitialize() {
-        // TODO send multicast saying a crash occurred, asking for 3 membership logs
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.REINITIALIZE, 0)) {

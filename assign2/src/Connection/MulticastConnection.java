@@ -5,7 +5,7 @@ import java.net.*;
 
 public class MulticastConnection implements AutoCloseable {
     private static final int RECEIVE_BUFFER_SIZE = 2048;
-    private static final int TIMEOUT = 3000;
+    private static final int TIMEOUT = 2000;
 
     private final int port;
     private final InetAddress group;
@@ -14,7 +14,6 @@ public class MulticastConnection implements AutoCloseable {
     private boolean joined = false;
 
     public MulticastConnection(String host, int port) throws IOException {
-        // TODO Chnage host to null
         this.port = port;
         this.host = host;
         group = InetAddress.getByName(host);
