@@ -8,8 +8,8 @@ public class KVEntry implements Comparable<KVEntry> {
     private final String key;
     private final String value;
 
-    KVEntry(String key, String value) {
-        this.key = hash(key);
+    public KVEntry(String value) {
+        this.key = hash(value);
         this.value = value;
     }
 

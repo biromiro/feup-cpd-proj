@@ -1,5 +1,7 @@
 package Message;
 
+import KVStore.KVEntry;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +21,11 @@ public class ClientServerMessageProtocol {
                 .toString();
     }
 
-    public static String put(String key, String value) {
+    public static String put(KVEntry entry) {
         return new GenericMessageProtocol()
                 .addHeaderEntry("GET")
-                .addHeaderEntry("key", key)
-                .setBody(value)
+                .addHeaderEntry("key", entry.getKey())
+                .setBody(entry.getValue())
                 .toString();
     }
 

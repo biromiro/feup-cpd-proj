@@ -98,6 +98,15 @@ public class PersistentStorage {
         }
     }
 
+    //TODO is this ok? couldn't find async delete...
+    public void delete(String fileName, WriteHandler handler) {
+        try {
+            Files.delete(getPath(fileName));           handler.completed(0);
+        } catch (IOException e) {
+            handler.failed(e);
+        }
+    }
+
     public void writeSync(String fileName, String content) throws IOException {
         PrintWriter writer = new PrintWriter(getFileSync(fileName), StandardCharsets.UTF_8);
         writer.print(content);

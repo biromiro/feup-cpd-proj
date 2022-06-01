@@ -60,10 +60,9 @@ public class TestClient {
             System.out.println("File " + filepath + "does not exist.");
             return;
         }
-        String value = data.toString();
-        String key = KVEntry.hash(value); // TODO "compute key from value" :D:D:D:D:D:D:D:D
-        connection.send(ClientServerMessageProtocol.put(key, value));
-        System.out.println("Put value with key " + key);
+        KVEntry entry = new KVEntry(data.toString());
+        connection.send(ClientServerMessageProtocol.put(entry));
+        System.out.println("Put value with key " + entry.getKey());
     }
 
     private static void get(TcpConnection connection, String key) throws IOException {

@@ -1,5 +1,6 @@
 import Connection.AsyncServer;
 import Connection.AsyncTcpConnection;
+import KVStore.Bucket;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
 import Storage.*;
@@ -18,6 +19,7 @@ public class Node implements MembershipService {
     private final MembershipCounter membershipCounter;
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
+    private final Bucket bucket;
     private final ThreadPoolExecutor executor;
     private static final int NUM_THREADS = 16;
 
@@ -29,6 +31,8 @@ public class Node implements MembershipService {
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
+
+        this.bucket = new Bucket(storage);
 
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
         int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
@@ -100,7 +104,7 @@ public class Node implements MembershipService {
             public void completed(AsyncTcpConnection channel) {
                 // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
                 // TODO does it make sense to submit a thread here? Async IO takes care of it, right?
-                executor.submit(new KVStoreMessageHandler(nodeId, channel, membershipView));
+                executor.submit(new KVStoreMessageHandler(nodeId, channel, bucket, membershipView));
             }
 
             @Override
