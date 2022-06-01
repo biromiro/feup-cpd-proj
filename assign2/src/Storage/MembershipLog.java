@@ -2,20 +2,17 @@ package Storage;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MembershipLog {
     private static final String MEMBERSHIP_LOG_FILE = "membership_log";
     private final PersistentStorage storage;
-    private List<MembershipLogEntry> log;
+    private final List<MembershipLogEntry> log;
 
     public MembershipLog(PersistentStorage storage) {
         this.storage = storage;
-        log = new ArrayList<>();
+        log = Collections.synchronizedList(new ArrayList<>());
         try {
             // The membership log is created right when the program starts so the file is read
             // at the beginning (and only at the beginning). As such, the read may be synchronous.
@@ -58,9 +55,11 @@ public class MembershipLog {
             if (oldEntry.get().membershipCounter() >= entry.membershipCounter()) {
                 return oldEntry.get().membershipCounter();
             }
-            this.get().remove(oldEntry.get());
+
+            this.log.remove(oldEntry.get());
         }
-        this.get().add(entry);
+
+        this.log.add(entry);
         return entry.membershipCounter();
     }
 

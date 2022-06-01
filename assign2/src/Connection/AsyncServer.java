@@ -2,6 +2,7 @@ package Connection;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
@@ -14,8 +15,10 @@ public class AsyncServer implements AutoCloseable {
     private final AsynchronousServerSocketChannel socket;
 
     public AsyncServer(InetSocketAddress address, ThreadPoolExecutor executor) throws IOException {
-        this.address = address;
-        this.socket = AsynchronousServerSocketChannel.open().bind(address);
+        this.socket = AsynchronousServerSocketChannel
+                .open(AsynchronousChannelGroup.withThreadPool(executor))
+                .bind(address);
+        this.address = (InetSocketAddress) this.socket.getLocalAddress();
     }
 
     public AsyncServer(int port, ThreadPoolExecutor executor) throws IOException {

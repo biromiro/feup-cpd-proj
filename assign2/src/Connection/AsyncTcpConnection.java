@@ -17,13 +17,30 @@ public class AsyncTcpConnection implements AutoCloseable {
         this.socket = socket;
     }
 
-    public AsyncTcpConnection(ThreadPoolExecutor executor, int port) {
+    public interface ConnectionHandler {
+        void completed(AsyncTcpConnection connection);
+        void failed(Throwable exc);
+    }
+
+    public static void connect(ThreadPoolExecutor executor, String host, int port, ConnectionHandler handler) {
+        AsynchronousSocketChannel socket;
         try {
-            this.socket = AsynchronousSocketChannel.open(AsynchronousChannelGroup.withThreadPool(executor));
-            this.socket.connect(new InetSocketAddress(port));
+             socket = AsynchronousSocketChannel.open(AsynchronousChannelGroup.withThreadPool(executor));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            handler.failed(e);
+            return;
         }
+        socket.connect(new InetSocketAddress(host, port), null, new CompletionHandler<Void, Void>() {
+            @Override
+            public void completed(Void result, Void attachment) {
+                handler.completed(new AsyncTcpConnection(socket));
+            }
+
+            @Override
+            public void failed(Throwable exc, Void attachment) {
+                handler.failed(exc);
+            }
+        });
     }
 
     @Override

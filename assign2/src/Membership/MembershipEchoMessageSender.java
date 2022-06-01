@@ -21,7 +21,7 @@ public class MembershipEchoMessageSender implements Runnable {
     }
     @Override
     public void run() {
-        if (membershipView.isBroadcasting()) {
+        if (membershipView.isMulticasting()) {
             try {
                 clusterConnection.send(MembershipMessageProtocol.membershipLog(membershipView));
                 // TODO isto cria um novo executor. Nos so deviamos usar o executor original

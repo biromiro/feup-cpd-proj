@@ -19,7 +19,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final ThreadPoolExecutor executor;
-    private static final int NUM_THREADS = 16;
+    private static final int NUM_THREADS_PER_CORE = 4;
 
     public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
                 String nodeId, int storePort) {
@@ -31,7 +31,7 @@ public class Node implements MembershipService {
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
 
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
-        int numberThreads = Math.max(Runtime.getRuntime().availableProcessors(), NUM_THREADS);
+        int numberThreads = Runtime.getRuntime().availableProcessors() * NUM_THREADS_PER_CORE;
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);

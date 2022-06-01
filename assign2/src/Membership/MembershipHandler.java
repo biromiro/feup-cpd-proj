@@ -51,10 +51,13 @@ public class MembershipHandler {
                     future = serverSocket.accept();
                 } else break;
 
+                System.out.println("Received membership message from " + worker.getRemoteAddress());
+
                 membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
                 executor.submit(new MembershipMessageHandler(new AsyncTcpConnection(worker), membershipView));
             } catch (TimeoutException e) {
                 System.out.println("There was a timeout, trying again");
+                // TODO nodes that have already replied shouldn't reply again, UNLESS their membership view changed
                 clusterConnection.send(message);
                 transmissionCount += 1;
             } catch (InterruptedException ex) {
@@ -74,6 +77,7 @@ public class MembershipHandler {
             String joinMessage = MembershipMessageProtocol.join(this.nodeId, serverSocket.getPort(), count);
             if (!connectToCluster(serverSocket, clusterConnection, joinMessage)) {
                 membershipView.updateMember(nodeId, count);
+                this.sendBroadcastMembership(0);
             }
             //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
             //    this.sendBroadcastMembership();
@@ -88,7 +92,7 @@ public class MembershipHandler {
         try  {
             clusterConnection.leave();
             clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
-            membershipView.stopBroadcasting();
+            membershipView.stopMulticasting();
             clusterConnection.close();
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
@@ -104,17 +108,28 @@ public class MembershipHandler {
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             String reinitializeMessage = MembershipMessageProtocol.reinitialize(this.nodeId, serverSocket.getPort());
-            connectToCluster(serverSocket, clusterConnection, reinitializeMessage);
+            if (!connectToCluster(serverSocket, clusterConnection, reinitializeMessage)) {
+                this.sendBroadcastMembership(0);
+            }
             //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) this.sendBroadcastMembership();
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server upon reinitialize message.", e);
         }
     }
 
-    public void sendBroadcastMembership() {
-        if (!membershipView.isBroadcasting()) {
-            membershipView.startBroadcasting();
-            executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
+    public void sendBroadcastMembership(int delay) {
+        if (!membershipView.mayMulticast()) {
+            membershipView.becomeMulticasterCandidate();
+            if (delay == 0) {
+                membershipView.isMulticasting();
+                executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
+            } else {
+                // TODO isto cria um novo executor. Nos so deviamos usar o executor original
+                CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
+                    membershipView.isMulticasting();
+                    executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
+                });
+            }
         }
     }
 }

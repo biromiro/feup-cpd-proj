@@ -12,7 +12,7 @@ public class MembershipView {
     private final String currentNodeID;
     private Cluster cluster;
     //private int broadcasterIndex;
-    private boolean isBroadcasting;
+    private MulticasterState multicasterState;
 
     public MembershipView(MembershipLog membershipLog, String currentNodeID) {
         this.membershipLog = membershipLog;
@@ -24,7 +24,7 @@ public class MembershipView {
             }
         }
         //this.broadcasterIndex = 0;
-        this.isBroadcasting = false;
+        this.multicasterState = MulticasterState.NOT_MULTICASTING_MEMBERSHIP;
     }
 
     public Cluster getCluster() {
@@ -63,10 +63,27 @@ public class MembershipView {
         }
     }
 
+    public int getIndexInCluster() {
+        List<String> nodeIDs = this.getMembers().stream().sorted().toList();
+        return nodeIDs.indexOf(this.currentNodeID);
+    }
 
-    public void startBroadcasting() { this.isBroadcasting = true; }
-    public void stopBroadcasting() { this.isBroadcasting = false; }
-    public boolean isBroadcasting() { return isBroadcasting; }
+    public void startMulticasting() {
+        this.multicasterState = MulticasterState.MULTICASTING_MEMBERSHIP;
+    }
+    public void stopMulticasting() {
+        this.multicasterState = MulticasterState.NOT_MULTICASTING_MEMBERSHIP;
+    }
+    public void becomeMulticasterCandidate() {
+        this.multicasterState = MulticasterState.MULTICASTING_CANDIDATE;
+    }
+    public boolean isMulticasting() {
+        return multicasterState == MulticasterState.MULTICASTING_MEMBERSHIP;
+    }
+    public boolean mayMulticast() {
+        return multicasterState == MulticasterState.MULTICASTING_CANDIDATE
+                || multicasterState == MulticasterState.MULTICASTING_MEMBERSHIP;
+    }
 
     /*
     public boolean isBroadcaster() {

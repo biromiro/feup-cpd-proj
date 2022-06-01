@@ -63,4 +63,8 @@ public class Cluster {
     public List<String> getMembers() {
         return nodes.stream().map(NodeEntry::getValue).collect(Collectors.toList());
     }
+
+    public int size() {
+        return nodes.size();
+    }
 }
