@@ -1,13 +1,10 @@
-import KVStore.Cluster;
+import Connection.AsyncServer;
+import Connection.AsyncTcpConnection;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
 import Storage.*;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.AsynchronousServerSocketChannel;
-import java.nio.channels.AsynchronousSocketChannel;
-import java.nio.channels.CompletionHandler;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -22,19 +19,23 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final ThreadPoolExecutor executor;
+    private static final int NUM_THREADS_PER_CORE = 4;
 
-    public Node(PersistentStorage storage, String mcastAddr, int mcastPort,
-                String nodeId, int storePort) {
+    public Node(String mcastAddr, int mcastPort, String nodeId, int storePort) {
         this.nodeId = nodeId;
         this.storePort = storePort;
 
+        // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
+        int numberThreads = Runtime.getRuntime().availableProcessors() * NUM_THREADS_PER_CORE;
+        System.out.println("There are " + numberThreads + " threads in the pool.");
+        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
+
+        PersistentStorage storage = new PersistentStorage(nodeId, this.executor);
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
-        this.membershipView = new MembershipView(membershipLog);
+        this.membershipView = new MembershipView(membershipLog, this.nodeId);
 
-        System.out.println("There are " + Runtime.getRuntime().availableProcessors() + " threads in the pool.");
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, storePort, membershipView, executor);
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }
 
     private void incrementCounter() {
@@ -43,20 +44,18 @@ public class Node implements MembershipService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to increment membership counter in non-volatile memory.", e);
         }
-
-        this.membershipView.updateMember(nodeId, membershipCounter.get());
     }
 
     @Override
     public void join() throws RemoteException {
         if (membershipCounter.isJoin()) {
+            // TODO faz sentido isto ser dito no cliente ou no servidor?
             System.out.println("Node is already in the cluster.");
             return;
         }
         incrementCounter();
 
         membershipHandler.join(membershipCounter.get());
-        membershipHandler.sendBroadcastMembership();
         membershipHandler.receive();
         // TODO get information from predecessor
     }
@@ -85,37 +84,34 @@ public class Node implements MembershipService {
                 registry.rebind(name, membershipService);
             } catch (RemoteException ex) {
                 System.err.println("Failed to connect to registry.");
-                return;
             }
         }
-        System.out.println("Server ready");
     }
 
     public void initializeTCPLoop() {
-        try (AsynchronousServerSocketChannel listener =
-                     AsynchronousServerSocketChannel.open().bind(new InetSocketAddress(this.storePort))) {
-            listener.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>() {
-                public void completed(AsynchronousSocketChannel ch, Void att) {
-                    // accept the next connection
-                    listener.accept(null, this);
-                    // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                    // handle this connection
-                    executor.submit(new KVStoreMessageHandler(nodeId, ch, membershipView));
-                }
-                public void failed(Throwable exc, Void att) {
-
-                }
-            });
+        AsyncServer listener;
+        try {
+            listener = new AsyncServer(this.storePort, executor);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        listener.loop(new AsyncServer.ConnectionHandler() {
+            @Override
+            public void completed(AsyncTcpConnection channel) {
+                // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
+                new KVStoreMessageHandler(nodeId, channel, membershipView).run();
+            }
+
+            @Override
+            public void failed(Throwable exc) { exc.printStackTrace(); }
+        });
     }
 
     public void start() {
         this.initializeTCPLoop();
         if (membershipCounter.isJoin()) {
             membershipHandler.reinitialize();
-            membershipHandler.sendBroadcastMembership();
             membershipHandler.receive();
         }
     }

@@ -19,17 +19,17 @@ public class MembershipEchoMessageSender implements Runnable {
         this.clusterConnection = clusterConnection;
         this.membershipView = membershipView;
     }
-
     @Override
     public void run() {
-        if (membershipView.getPriority() == 0) {
+        if (membershipView.isMulticasting()) {
             try {
                 clusterConnection.send(MembershipMessageProtocol.membershipLog(membershipView));
+                // TODO isto cria um novo executor. Nos so deviamos usar o executor original
                 CompletableFuture.delayedExecutor(TIMEOUT, TimeUnit.MILLISECONDS).execute(() -> {
                     executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
                 });
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         }
     }

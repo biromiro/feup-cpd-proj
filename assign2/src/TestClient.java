@@ -1,4 +1,4 @@
-import Connection.UnicastConnection;
+import Connection.TcpConnection;
 import KVStore.KVEntry;
 import Membership.MembershipService;
 import Message.ClientServerMessageProtocol;
@@ -38,7 +38,7 @@ public class TestClient {
     }
 
     private static void keyValueOperation(String ip, int port, String operation, String operand) {
-        try (UnicastConnection connection = new UnicastConnection(ip, port)) {
+        try (TcpConnection connection = new TcpConnection(ip, port)) {
             switch (operation) {
                 case "put" -> put(connection, operand);
                 case "get" -> get(connection, operand);
@@ -49,7 +49,7 @@ public class TestClient {
         }
     }
 
-    private static void put(UnicastConnection connection, String filepath) {
+    private static void put(TcpConnection connection, String filepath) {
         File file = new File(filepath);
         StringBuilder data = new StringBuilder();
         try (Scanner scanner = new Scanner(file)){
@@ -66,13 +66,13 @@ public class TestClient {
         System.out.println("Put value with key " + key);
     }
 
-    private static void get(UnicastConnection connection, String key) throws IOException {
+    private static void get(TcpConnection connection, String key) throws IOException {
         connection.send(ClientServerMessageProtocol.get(key));
         String value = connection.read();
         System.out.println(value);
     }
 
-    private static void delete(UnicastConnection connection, String key) {
+    private static void delete(TcpConnection connection, String key) {
         connection.send(ClientServerMessageProtocol.delete(key));
     }
 

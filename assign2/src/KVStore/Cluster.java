@@ -60,16 +60,11 @@ public class Cluster {
         return nodes.get(index).getValue();
     }
 
-    public boolean contains(String node) {
-        for (NodeEntry entry : nodes) {
-            if (Objects.equals(entry.getValue(), node)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public List<String> getMembers() {
         return nodes.stream().map(NodeEntry::getValue).collect(Collectors.toList());
+    }
+
+    public int size() {
+        return nodes.size();
     }
 }

@@ -13,10 +13,24 @@ public class GenericMessageProtocol {
     public GenericMessageProtocol(String message) {
         header = message.lines()
                 .takeWhile(line -> !line.isEmpty())
-                .map(line -> Arrays.asList(line.split(" ")))
+                .map(line -> Arrays.asList(line.trim().split("\\s+")))
                 .collect(Collectors.toList());
 
         body = message.substring(message.indexOf("\n\n") + 2);
+    }
+
+    public static List<List<String>> firstHeaderIsMessageType(List<List<String>> headers) throws MessageProtocolException {
+        if (headers.size() == 0) {
+            throw new MessageProtocolException("Message is missing headers");
+        }
+        if (headers.get(0).size() != 1) {
+            throw new MessageProtocolException("Unknown message '"
+                    + String.join(" ", headers.get(0)) + '\'');
+        }
+
+        System.out.println("HEADERS: " + headers);
+
+        return headers.subList(1, headers.size());
     }
 
     public GenericMessageProtocol addHeaderEntry(String ... fields) {
@@ -72,6 +86,11 @@ public class GenericMessageProtocol {
 
     public static void ensureOnlyContains(Map<String, String> fields, List<String> keys)
             throws MessageProtocolException {
+        ensureOnlyContains(fields, keys, new ArrayList<>());
+    }
+
+    public static void ensureOnlyContains(Map<String, String> fields, List<String> keys, List<String> optionalKeys)
+            throws MessageProtocolException {
         for (String key : keys) {
             if (!fields.containsKey(key)) {
                 throw new MessageProtocolException("Missing field '" + key + '\'');
@@ -81,7 +100,7 @@ public class GenericMessageProtocol {
         Optional<String> others = fields
                 .keySet()
                 .stream()
-                .filter(k -> !keys.contains(k))
+                .filter(k -> !keys.contains(k) && !optionalKeys.contains(k))
                 .findAny();
         if (others.isPresent()) {
             throw new MessageProtocolException("Unexpected field '" + others.get() + '\'');

@@ -5,7 +5,7 @@ import java.net.*;
 
 public class MulticastConnection implements AutoCloseable {
     private static final int RECEIVE_BUFFER_SIZE = 2048;
-    private static final int TIMEOUT = 3000;
+    private static final int TIMEOUT = 2000;
 
     private final int port;
     private final InetAddress group;
@@ -22,7 +22,6 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void send(String message) throws IOException {
-        System.out.println("sending " +  group + " " +  port);
         socket.send(new DatagramPacket(message.getBytes(), message.length(), group, port));
     }
 
@@ -43,6 +42,7 @@ public class MulticastConnection implements AutoCloseable {
         return socket.isClosed();
     }
 
+    @Override
     public void close() throws IOException {
         this.leave();
         socket.close();
@@ -50,6 +50,7 @@ public class MulticastConnection implements AutoCloseable {
 
     public void leave() throws IOException {
         if (joined) {
+            System.out.println("Leaving group");
             socket.leaveGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
             this.joined = false;
         }

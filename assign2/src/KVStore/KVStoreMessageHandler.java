@@ -1,37 +1,44 @@
 package KVStore;
 
+import Connection.AsyncTcpConnection;
 import Membership.MembershipView;
 import Message.ClientServerMessageProtocol;
-import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
-import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousSocketChannel;
-
-public class KVStoreMessageHandler implements Runnable {
-    private static final int RECEIVE_BUFFER_SIZE = 2048;
+public class KVStoreMessageHandler {
     private final String localNodeId;
-    private final AsynchronousSocketChannel worker;
+    private final AsyncTcpConnection worker;
     private final MembershipView membershipView;
 
-    public KVStoreMessageHandler(String localNodeId, AsynchronousSocketChannel worker, MembershipView membershipView) {
+    public KVStoreMessageHandler(String localNodeId, AsyncTcpConnection worker, MembershipView membershipView) {
         this.localNodeId = localNodeId;
         this.worker = worker;
         this.membershipView = membershipView;
     }
 
-    @Override
     public void run() {
-        ByteBuffer buffer = ByteBuffer.allocate(RECEIVE_BUFFER_SIZE);
-        worker.read(buffer);
+        worker.read(new AsyncTcpConnection.ReadHandler() {
+            @Override
+            public void completed(Integer result, String message) {
+                handleMessage(message);
+            }
 
-        String receivedMessage = new String(buffer.array(), buffer.arrayOffset(), buffer.array().length);
+            @Override
+            public void failed(Throwable exc) {
+                System.out.println("Failed to read from socket");
+                exc.printStackTrace();
+            }
+        });
+    }
 
+    private void handleMessage(String message) {
         ClientServerMessageProtocol parsedMessage;
         try {
-            parsedMessage = ClientServerMessageProtocol.parse(receivedMessage);
+            parsedMessage = ClientServerMessageProtocol.parse(message);
         } catch (MessageProtocolException e) {
-            throw new RuntimeException("Invalid message", e);
+            System.out.println("Invalid message");
+            e.printStackTrace();
+            return;
         }
 
         if (parsedMessage instanceof ClientServerMessageProtocol.Get getMessage) {
@@ -41,7 +48,7 @@ public class KVStoreMessageHandler implements Runnable {
         } else if (parsedMessage instanceof ClientServerMessageProtocol.Delete deleteMessage) {
             handleDelete(deleteMessage.getKey());
         } else {
-            throw new RuntimeException("Unexpected message " + parsedMessage);
+            System.out.println("Unexpected message " + parsedMessage);
         }
     }
 
