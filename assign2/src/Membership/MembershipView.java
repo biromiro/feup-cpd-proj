@@ -89,4 +89,8 @@ public class MembershipView {
     public String getNodeId() {
         return currentNodeID;
     }
+
+    public Integer getCount() {
+        return membershipLog.get().stream().map(MembershipLogEntry::membershipCounter).reduce(0, Integer::sum);
+    }
 }

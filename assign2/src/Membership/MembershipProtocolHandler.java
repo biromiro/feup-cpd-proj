@@ -3,6 +3,8 @@ package Membership;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +62,8 @@ public class MembershipProtocolHandler implements Runnable {
         });
     }
 
-    private void determineIfShouldSendMembershipView(String host, int port) {
+    private void determineIfShouldSendMembershipView(String host, int port, Map<String, Integer> blacklist) {
+        if (Objects.equals(blacklist.get(host), membershipView.getCount())) return;
         if (membershipView.isMulticasting()) {
             sendMembershipView(host, port);
         } else {
@@ -75,7 +78,7 @@ public class MembershipProtocolHandler implements Runnable {
     private void handleJoin(MembershipMessageProtocol.Join joinMessage) {
         membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
 
-        this.determineIfShouldSendMembershipView(joinMessage.getId(), joinMessage.getPort());
+        this.determineIfShouldSendMembershipView(joinMessage.getId(), joinMessage.getPort(), joinMessage.getBlacklist());
     }
 
     private void handleLeave(MembershipMessageProtocol.Leave leaveMessage) {
@@ -97,6 +100,9 @@ public class MembershipProtocolHandler implements Runnable {
 
     private void handleReinitialize(MembershipMessageProtocol.Reinitialize reinitializeMessage) {
         // TODO maybe should send the membership counter as well on reinitialize message?
-        this.determineIfShouldSendMembershipView(reinitializeMessage.getId(), reinitializeMessage.getPort());
+        this.determineIfShouldSendMembershipView(
+                reinitializeMessage.getId(),
+                reinitializeMessage.getPort(),
+                reinitializeMessage.getBlacklist());
     }
 }

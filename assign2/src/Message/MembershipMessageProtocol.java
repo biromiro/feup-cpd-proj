@@ -7,13 +7,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class MembershipMessageProtocol {
-    public static String join(String nodeId, int port, int membershipCounter) {
-        return new GenericMessageProtocol()
+    public static String join(String nodeId, int port, int membershipCounter, Map<String, Integer> blacklist) {
+        
+        GenericMessageProtocol genericMessageProtocol = new GenericMessageProtocol()
                 .addHeaderEntry("JOIN")
                 .addHeaderEntry("node", nodeId)
                 .addHeaderEntry("port", String.valueOf(port))
-                .addHeaderEntry("counter", String.valueOf(membershipCounter))
-                .toString();
+                .addHeaderEntry("counter", String.valueOf(membershipCounter));
+        
+        for (Map.Entry<String, Integer> entry : blacklist.entrySet()) {
+            genericMessageProtocol.addHeaderEntry("blacklist", entry.getKey(), String.valueOf(entry.getValue()));
+        }
+        
+        return genericMessageProtocol.toString();
     }
 
     public static String leave(String nodeId, int membershipCounter) {
@@ -45,12 +51,17 @@ public class MembershipMessageProtocol {
                 .toString();
     }
 
-    public static String reinitialize(String nodeId, int port) {
-        return new GenericMessageProtocol()
+    public static String reinitialize(String nodeId, int port, Map<String, Integer> blacklist) {
+        GenericMessageProtocol genericMessageProtocol = new GenericMessageProtocol()
                 .addHeaderEntry("REINITIALIZE")
                 .addHeaderEntry("node", nodeId)
-                .addHeaderEntry("port", String.valueOf(port))
-                .toString();
+                .addHeaderEntry("port", String.valueOf(port));
+
+        for (Map.Entry<String, Integer> entry : blacklist.entrySet()) {
+            genericMessageProtocol.addHeaderEntry("blacklist", entry.getKey(), String.valueOf(entry.getValue()));
+        }
+
+        return genericMessageProtocol.toString();
     }
 
     public static String membershipLog(MembershipView membershipView) {
@@ -73,10 +84,13 @@ public class MembershipMessageProtocol {
         private final String node;
         private final int membershipCounter;
         private final int port;
-        public Join(String node, int membershipCounter, int port) {
+
+        private final Map<String, Integer> blacklist;
+        public Join(String node, int membershipCounter, int port, Map<String, Integer> blacklist) {
             this.node = node;
             this.membershipCounter = membershipCounter;
             this.port = port;
+            this.blacklist = blacklist;
         }
 
         public String getId() {
@@ -89,6 +103,10 @@ public class MembershipMessageProtocol {
 
         public int getPort() {
             return port;
+        }
+
+        public Map<String, Integer> getBlacklist() {
+            return blacklist;
         }
     }
 
@@ -137,9 +155,13 @@ public class MembershipMessageProtocol {
     public static class Reinitialize extends MembershipMessageProtocol {
         private final String node;
         private final int port;
-        public Reinitialize(String node, int port) {
+
+        private final Map<String, Integer> blacklist;
+
+        public Reinitialize(String node, int port, Map<String, Integer> blacklist) {
             this.node = node;
             this.port = port;
+            this.blacklist = blacklist;
         }
 
         public String getId() {
@@ -148,6 +170,10 @@ public class MembershipMessageProtocol {
 
         public int getPort() {
             return port;
+        }
+
+        public Map<String, Integer> getBlacklist() {
+            return blacklist;
         }
     }
 
@@ -188,22 +214,36 @@ public class MembershipMessageProtocol {
 
         switch (parsedMessage.getHeaders().get(0).get(0)) {
             case "JOIN" -> {
-                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                List<List<String>> blacklistHeaders = headers.stream()
+                        .filter(header -> header.get(0).equals("blacklist")).toList();
+                List<List<String>> otherHeaders = headers.stream()
+                        .filter(header -> !header.get(0).equals("blacklist")).toList();
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(otherHeaders);
+                Map<String, Integer> blacklist = parseBlacklistHeaders(blacklistHeaders);
+
                 GenericMessageProtocol.ensureOnlyContains(fields, Arrays.asList("node", "counter", "port"));
 
                 return new Join(
                         fields.get("node"),
                         Integer.parseInt(fields.get("counter")),
-                        Integer.parseInt(fields.get("port"))
+                        Integer.parseInt(fields.get("port")),
+                        blacklist
                 );
             }
             case "REINITIALIZE" -> {
-                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                List<List<String>> blacklistHeaders = headers.stream()
+                        .filter(header -> header.get(0).equals("blacklist")).toList();
+                List<List<String>> otherHeaders = headers.stream()
+                        .filter(header -> !header.get(0).equals("blacklist")).toList();
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(otherHeaders);
+                Map<String, Integer> blacklist = parseBlacklistHeaders(blacklistHeaders);
+
                 GenericMessageProtocol.ensureOnlyContains(fields, Arrays.asList("node", "port"));
 
                 return new Reinitialize(
                         fields.get("node"),
-                        Integer.parseInt(fields.get("port"))
+                        Integer.parseInt(fields.get("port")),
+                        blacklist
                 );
             }
             case "LEAVE" -> {
@@ -241,5 +281,24 @@ public class MembershipMessageProtocol {
             default -> throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
         }
+    }
+
+    private static Map<String, Integer> parseBlacklistHeaders(List<List<String>> blacklistHeaders) throws MessageProtocolException {
+        Map<String, Integer> blacklist = new HashMap<>();
+
+        for (List<String> header : blacklistHeaders) {
+            if (header.size() != 3) {
+                throw new MessageProtocolException("Unexpected blacklist header '" + header + '\'');
+            }
+            String key = header.get(1);
+            String value = header.get(2);
+            try {
+                blacklist.put(key, Integer.parseInt(value));
+            } catch (NumberFormatException e) {
+                throw new MessageProtocolException("Unexpected blacklist entry '" + key + " " + value
+                        + "'. Expected integer, got " + value);
+            }
+        }
+        return blacklist;
     }
 }

@@ -4,13 +4,18 @@ import Connection.AsyncTcpConnection;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
+
 public class MembershipMessageHandler implements Runnable {
     private final AsyncTcpConnection worker;
     private final MembershipView membershipView;
+    private final Map<String, Integer> blacklist;
 
-    MembershipMessageHandler(AsyncTcpConnection worker, MembershipView membershipView) {
+    MembershipMessageHandler(AsyncTcpConnection worker, MembershipView membershipView, Map<String, Integer> blacklist) {
         this.worker = worker;
         this.membershipView = membershipView;
+        this.blacklist = blacklist;
     }
 
     @Override
@@ -18,7 +23,8 @@ public class MembershipMessageHandler implements Runnable {
         worker.read(new AsyncTcpConnection.ReadHandler() {
             @Override
             public void completed(Integer result, String message) {
-                handleMessage(message);
+                MembershipMessageProtocol.Membership membershipMessage = handleMessage(message);
+                blacklist.put(membershipMessage.getId(), membershipView.getCount());
             }
 
             @Override
@@ -29,20 +35,19 @@ public class MembershipMessageHandler implements Runnable {
         });
     }
 
-    private void handleMessage(String message) {
+    private MembershipMessageProtocol.Membership handleMessage(String message) {
         MembershipMessageProtocol parsedMessage;
         try {
             parsedMessage = MembershipMessageProtocol.parse(message);
         } catch (MessageProtocolException e) {
-            System.out.println("Invalid message");
-            e.printStackTrace();
-            return;
+            throw new RuntimeException("Invalid message", e);
         }
 
         if (parsedMessage instanceof MembershipMessageProtocol.Membership membershipMessage) {
             handleMembership(membershipMessage);
+            return membershipMessage;
         } else {
-            System.out.println("Unexpected message " + parsedMessage);
+            throw new RuntimeException("Unexpected message type");
         }
     }
 

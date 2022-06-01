@@ -94,7 +94,7 @@ public class MembershipLog {
 
             @Override
             public void failed(Throwable exc) {
-                System.out.println("Failed to write membership log: " + exc.getMessage());
+                System.out.println("Failed to write membership log: " + exc);
             }
         });
     }

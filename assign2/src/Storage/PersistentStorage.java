@@ -46,8 +46,14 @@ public class PersistentStorage {
 
     public void write(String fileName, String content, WriteHandler handler) {
         ByteBuffer buffer = ByteBuffer.wrap(content.getBytes(StandardCharsets.UTF_8));
-        try (AsynchronousFileChannel file = getFile(fileName, WRITE, CREATE, TRUNCATE_EXISTING)) {
-            file.write(buffer, 0, null, new CompletionHandler<Integer, Void>() {
+        AsynchronousFileChannel file;
+        try {
+            file = getFile(fileName, WRITE, CREATE, TRUNCATE_EXISTING);
+        } catch (IOException ex) {
+            handler.failed(ex);
+            return;
+        }
+        file.write(buffer, 0, null, new CompletionHandler<Integer, Void>() {
                 @Override
                 public void completed(Integer result, Void attachment) {
                     handler.completed(result);
@@ -58,9 +64,6 @@ public class PersistentStorage {
                     handler.failed(exc);
                 }
             });
-        } catch (IOException e) {
-            handler.failed(e);
-        }
     }
 
     public interface ReadHandler {
@@ -70,32 +73,35 @@ public class PersistentStorage {
 
     public void read(String fileName, ReadHandler handler) {
         ByteBuffer buffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
-        try (AsynchronousFileChannel file = getFile(fileName, READ)) {
-            file.read(buffer, 0, null, new CompletionHandler<Integer, Void>() {
-                private int pos = 0;
-                private final StringBuilder sb = new StringBuilder();
-
-                @Override
-                public void completed(Integer result, Void attachment) {
-                    if (result == -1) {
-                        handler.completed(result, sb.toString());
-                    } else {
-                        pos += result;
-                        sb.append(new String(buffer.array(), buffer.arrayOffset(), buffer.array().length));
-
-                        buffer.clear();
-                        file.read(buffer, pos , null, this);
-                    }
-                }
-
-                @Override
-                public void failed(Throwable exc, Void attachment) {
-                    handler.failed(exc);
-                }
-            });
+        AsynchronousFileChannel file;
+        try {
+            file = getFile(fileName, READ);
         } catch (IOException e) {
             handler.failed(e);
+            return;
         }
+        file.read(buffer, 0, null, new CompletionHandler<Integer, Void>() {
+            private int pos = 0;
+            private final StringBuilder sb = new StringBuilder();
+
+            @Override
+            public void completed(Integer result, Void attachment) {
+                if (result == -1) {
+                    handler.completed(result, sb.toString());
+                } else {
+                    pos += result;
+                    sb.append(new String(buffer.array(), buffer.arrayOffset(), buffer.array().length));
+
+                    buffer.clear();
+                    file.read(buffer, pos , null, this);
+                }
+            }
+
+            @Override
+            public void failed(Throwable exc, Void attachment) {
+                handler.failed(exc);
+            }
+        });
     }
 
     public void writeSync(String fileName, String content) throws IOException {

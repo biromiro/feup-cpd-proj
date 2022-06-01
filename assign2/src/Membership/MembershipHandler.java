@@ -4,9 +4,12 @@ import Connection.AsyncServer;
 import Connection.AsyncTcpConnection;
 import Connection.MulticastConnection;
 import Message.MembershipMessageProtocol;
+import Message.MessageProtocolException;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
 public class MembershipHandler {
@@ -35,10 +38,30 @@ public class MembershipHandler {
         this.executor = executor;
     }
 
+    private String getMessage(MembershipMessageType type, int port, int count, Map<String, Integer> blacklist)
+            throws MessageProtocolException {
+        if (type == MembershipMessageType.JOIN) {
+            return MembershipMessageProtocol.join(this.nodeId, port, count, blacklist);
+        } else if (type == MembershipMessageType.REINITIALIZE) {
+            return MembershipMessageProtocol.reinitialize(this.nodeId, port, blacklist);
+        }
+
+        throw new MessageProtocolException("Unexpected message type '" + type + '\'');
+
+    }
+
     private boolean connectToCluster(
             AsyncServer serverSocket,
             MulticastConnection clusterConnection,
-            String message) throws IOException {
+            MembershipMessageType type, int count) throws IOException {
+        String message = null;
+        Map<String, Integer> blacklist = new ConcurrentHashMap<>();
+
+        try {
+            message = this.getMessage(type, serverSocket.getPort(), count, blacklist);
+        } catch (MessageProtocolException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
         clusterConnection.send(message);
 
         int transmissionCount = 1;
@@ -55,7 +78,7 @@ public class MembershipHandler {
 
                 System.out.println("Received membership message from " + worker.getRemoteAddress());
 
-                executor.submit(new MembershipMessageHandler(new AsyncTcpConnection(worker), membershipView));
+                executor.submit(new MembershipMessageHandler(new AsyncTcpConnection(worker), membershipView, blacklist));
             } catch (TimeoutException e) {
                 transmissionCount += 1;
                 if (transmissionCount > MAX_RETRANSMISSION_TIMES) {
@@ -63,6 +86,11 @@ public class MembershipHandler {
                     break;
                 } else {
                     System.out.println("There was a timeout, trying again");
+                    try {
+                        message = this.getMessage(type, serverSocket.getPort(), count, blacklist);
+                    } catch (MessageProtocolException ex) {
+                        throw new RuntimeException(ex.getMessage(), ex);
+                    }
                     // TODO nodes that have already replied shouldn't reply again, UNLESS their membership view changed
                     clusterConnection.send(message);
                 }
@@ -81,8 +109,7 @@ public class MembershipHandler {
     public void join(int count) {
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
-            String joinMessage = MembershipMessageProtocol.join(this.nodeId, serverSocket.getPort(), count);
-            if (!connectToCluster(serverSocket, clusterConnection, joinMessage)) {
+            if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.JOIN, count)) {
                 membershipView.updateMember(nodeId, count);
                 this.sendBroadcastMembership(0);
             }
@@ -115,8 +142,7 @@ public class MembershipHandler {
         // TODO send multicast saying a crash occurred, asking for 3 membership logs
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
-            String reinitializeMessage = MembershipMessageProtocol.reinitialize(this.nodeId, serverSocket.getPort());
-            if (!connectToCluster(serverSocket, clusterConnection, reinitializeMessage)) {
+            if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.REINITIALIZE, 0)) {
                 this.sendBroadcastMembership(0);
             }
             //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) this.sendBroadcastMembership();

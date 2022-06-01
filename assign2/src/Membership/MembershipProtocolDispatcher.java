@@ -3,6 +3,7 @@ package Membership;
 import Connection.MulticastConnection;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -30,11 +31,11 @@ public class MembershipProtocolDispatcher implements Runnable {
                         new MembershipProtocolHandler(receivedMessage, membershipView, executor, membershipHandler));
             } catch (SocketTimeoutException e) {
                 membershipHandler.tryToAssumeMulticasterRole();
-
-                //membershipView.incrementBroadcasterIndex();
-                //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
-                ///    membershipHandler.sendBroadcastMembership();
-                //}
+            } catch (SocketException e) {
+                if (!connection.isClosed()) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e.getMessage());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
                 return;
