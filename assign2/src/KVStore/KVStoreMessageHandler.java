@@ -26,7 +26,8 @@ public class KVStoreMessageHandler implements Runnable {
 
             @Override
             public void failed(Throwable exc) {
-                throw new RuntimeException("Failed to read from socket", exc);
+                System.out.println("Failed to read from socket");
+                exc.printStackTrace();
             }
         });
     }
@@ -36,7 +37,9 @@ public class KVStoreMessageHandler implements Runnable {
         try {
             parsedMessage = ClientServerMessageProtocol.parse(message);
         } catch (MessageProtocolException e) {
-            throw new RuntimeException("Invalid message", e);
+            System.out.println("Invalid message");
+            e.printStackTrace();
+            return;
         }
 
         if (parsedMessage instanceof ClientServerMessageProtocol.Get getMessage) {
@@ -46,7 +49,7 @@ public class KVStoreMessageHandler implements Runnable {
         } else if (parsedMessage instanceof ClientServerMessageProtocol.Delete deleteMessage) {
             handleDelete(deleteMessage.getKey());
         } else {
-            throw new RuntimeException("Unexpected message " + parsedMessage);
+            System.out.println("Unexpected message " + parsedMessage);
         }
     }
 

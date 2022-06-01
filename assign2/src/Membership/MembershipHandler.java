@@ -13,6 +13,7 @@ public class MembershipHandler {
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 1000;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
+    private static final int WAIT_OTHERS_DELAY_MILLISECONDS = 200;
     private final String mcastAddr;
     private final int mcastPort;
     private final String nodeId;
@@ -96,10 +97,11 @@ public class MembershipHandler {
 
     public void leave(int count) {
         try  {
+            membershipView.stopMulticasting();
             clusterConnection.leave();
             clusterConnection.send(MembershipMessageProtocol.leave(this.nodeId, count));
-            membershipView.stopMulticasting();
             clusterConnection.close();
+            membershipView.updateMember(nodeId, count);
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to multicast group.", e);
         }
@@ -137,5 +139,10 @@ public class MembershipHandler {
                 });
             }
         }
+    }
+
+    public void tryToAssumeMulticasterRole() {
+        int delay = membershipView.getIndexInCluster() * WAIT_OTHERS_DELAY_MILLISECONDS;
+        this.sendBroadcastMembership(delay);
     }
 }

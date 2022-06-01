@@ -46,7 +46,7 @@ public class PersistentStorage {
 
     public void write(String fileName, String content, WriteHandler handler) {
         ByteBuffer buffer = ByteBuffer.wrap(content.getBytes(StandardCharsets.UTF_8));
-        try (AsynchronousFileChannel file = getFile(fileName, WRITE, CREATE)) {
+        try (AsynchronousFileChannel file = getFile(fileName, WRITE, CREATE, TRUNCATE_EXISTING)) {
             file.write(buffer, 0, null, new CompletionHandler<Integer, Void>() {
                 @Override
                 public void completed(Integer result, Void attachment) {

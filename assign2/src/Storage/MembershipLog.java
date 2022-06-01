@@ -50,13 +50,14 @@ public class MembershipLog {
         Optional<MembershipLogEntry> oldEntry = this.get()
                 .stream()
                 .filter(e -> e.nodeId().equals(entry.nodeId()))
-                .findAny();
+                .reduce((a, b) -> a.membershipCounter() > b.membershipCounter() ? a : b);
+
         if (oldEntry.isPresent()) {
             if (oldEntry.get().membershipCounter() >= entry.membershipCounter()) {
                 return oldEntry.get().membershipCounter();
             }
 
-            this.log.remove(oldEntry.get());
+            this.log.removeIf(e -> e.nodeId().equals(entry.nodeId()));
         }
 
         this.log.add(entry);
@@ -64,16 +65,23 @@ public class MembershipLog {
     }
 
     public int log(MembershipLogEntry entry) {
-        int counter = this.addEntry(entry);
+        int counter;
+        synchronized (log) {
+            counter = this.addEntry(entry);
+        }
+
         this.save();
         return counter;
     }
 
     public List<MembershipLogEntry> log(List<MembershipLogEntry> entries) {
-        List<MembershipLogEntry> counters = entries
-                .stream()
-                .map(entry -> new MembershipLogEntry(entry.nodeId(), this.addEntry(entry)))
-                .collect(Collectors.toList());
+        List<MembershipLogEntry> counters;
+        synchronized (log) {
+            counters = entries
+                    .stream()
+                    .map(entry -> new MembershipLogEntry(entry.nodeId(), this.addEntry(entry)))
+                    .collect(Collectors.toList());
+        }
 
         this.save();
         return counters;
@@ -89,5 +97,22 @@ public class MembershipLog {
                 System.out.println("Failed to write membership log: " + exc.getMessage());
             }
         });
+    }
+
+    public boolean receivedOutdated(List<MembershipLogEntry> entries) {
+        List<MembershipLogEntry> log = this.get();
+
+        for (MembershipLogEntry entry: entries) {
+            Optional<MembershipLogEntry> existingEntry = log
+                    .stream()
+                    .filter(e -> e.nodeId().equals(entry.nodeId()))
+                    .findAny();
+
+            if (existingEntry.isPresent() && entry.membershipCounter() < existingEntry.get().membershipCounter()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -13,12 +13,14 @@ public class MembershipProtocolHandler implements Runnable {
     private final String receivedMessage;
     private final MembershipView membershipView;
     private final ThreadPoolExecutor executor;
+    private final MembershipHandler membershipHandler;
 
     public MembershipProtocolHandler(String receivedMessage, MembershipView membershipView,
-                                     ThreadPoolExecutor executor) {
+                                     ThreadPoolExecutor executor, MembershipHandler handler) {
         this.receivedMessage = receivedMessage;
         this.membershipView = membershipView;
         this.executor = executor;
+        this.membershipHandler = handler;
     }
 
     @Override
@@ -78,17 +80,19 @@ public class MembershipProtocolHandler implements Runnable {
 
     private void handleLeave(MembershipMessageProtocol.Leave leaveMessage) {
         membershipView.updateMember(leaveMessage.getId(), leaveMessage.getMembershipCounter());
-        // TODO
     }
 
     private void handleMembership(MembershipMessageProtocol.Membership membershipMessage) {
-        membershipView.merge(membershipMessage.getLog());
+        boolean outdatedMessage = membershipView.merge(membershipMessage.getLog());
 
-        int idCompare = membershipMessage.getId().compareTo(membershipView.getNodeId());
-        if (idCompare < 0) {
-            membershipView.stopMulticasting();
+        if (outdatedMessage) {
+            membershipHandler.tryToAssumeMulticasterRole();
+        } else {
+            int idCompare = membershipMessage.getId().compareTo(membershipView.getNodeId());
+            if (idCompare < 0) {
+                membershipView.stopMulticasting();
+            }
         }
-        // TODO
     }
 
     private void handleReinitialize(MembershipMessageProtocol.Reinitialize reinitializeMessage) {

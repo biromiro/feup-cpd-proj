@@ -29,7 +29,7 @@ public class MembershipEchoMessageSender implements Runnable {
                     executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
                 });
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         }
     }

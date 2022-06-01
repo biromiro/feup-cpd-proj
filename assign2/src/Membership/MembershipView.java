@@ -11,7 +11,6 @@ public class MembershipView {
     private final MembershipLog membershipLog;
     private final String currentNodeID;
     private Cluster cluster;
-    //private int broadcasterIndex;
     private MulticasterState multicasterState;
 
     public MembershipView(MembershipLog membershipLog, String currentNodeID) {
@@ -23,7 +22,7 @@ public class MembershipView {
                 cluster.add(entry.nodeId());
             }
         }
-        //this.broadcasterIndex = 0;
+
         this.multicasterState = MulticasterState.NOT_MULTICASTING_MEMBERSHIP;
     }
 
@@ -46,14 +45,15 @@ public class MembershipView {
         }
     }
 
-    public void merge(List<String> members, List<MembershipLogEntry> log) {
+    public boolean merge(List<String> members, List<MembershipLogEntry> log) {
         // TODO recycle hashes as much as possible
         // TODO merge clusters
         this.cluster = new Cluster(members);
-        this.merge(log);
+        return this.merge(log);
     }
 
-    public void merge(List<MembershipLogEntry> log) {
+    public boolean merge(List<MembershipLogEntry> log) {
+        boolean receivedOutdated = this.membershipLog.receivedOutdated(log);
         for (MembershipLogEntry entry: this.membershipLog.log(log)) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
                 this.cluster.add(entry.nodeId());
@@ -61,6 +61,7 @@ public class MembershipView {
                 this.cluster.remove(entry.nodeId());
             }
         }
+        return receivedOutdated;
     }
 
     public int getIndexInCluster() {
@@ -84,16 +85,6 @@ public class MembershipView {
         return multicasterState == MulticasterState.MULTICASTING_CANDIDATE
                 || multicasterState == MulticasterState.MULTICASTING_MEMBERSHIP;
     }
-
-    /*
-    public boolean isBroadcaster() {
-        List<String> nodeIDs = this.getMembers().stream().sorted().toList();
-        return nodeIDs.get(broadcasterIndex).equals(currentNodeID);
-    }
-    public void incrementBroadcasterIndex() { this.broadcasterIndex++; }
-    public void setBroadcasterIndex(int broadcasterIndex) { this.broadcasterIndex = broadcasterIndex; }
-    public int getBroadcasterIndex() { return broadcasterIndex; }
-     */
 
     public String getNodeId() {
         return currentNodeID;

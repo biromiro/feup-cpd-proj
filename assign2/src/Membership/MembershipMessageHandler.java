@@ -23,7 +23,8 @@ public class MembershipMessageHandler implements Runnable {
 
             @Override
             public void failed(Throwable exc) {
-                throw new RuntimeException("Failed to read from socket", exc);
+                System.out.println("Failed to read from socket");
+                exc.printStackTrace();
             }
         });
     }
@@ -33,13 +34,15 @@ public class MembershipMessageHandler implements Runnable {
         try {
             parsedMessage = MembershipMessageProtocol.parse(message);
         } catch (MessageProtocolException e) {
-            throw new RuntimeException("Invalid message", e);
+            System.out.println("Invalid message");
+            e.printStackTrace();
+            return;
         }
 
         if (parsedMessage instanceof MembershipMessageProtocol.Membership membershipMessage) {
             handleMembership(membershipMessage);
         } else {
-            throw new RuntimeException("Unexpected message " + parsedMessage);
+            System.out.println("Unexpected message " + parsedMessage);
         }
     }
 

@@ -42,13 +42,13 @@ public class MembershipMessageDispatcher implements Runnable{
                 try {
                     connection.close();
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
             }
 
             @Override
             public void failed(Throwable exc) {
-                throw new RuntimeException("Failed to write to socket", exc);
+                exc.printStackTrace();
             }
         });
     }

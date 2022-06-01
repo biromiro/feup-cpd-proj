@@ -7,7 +7,6 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MembershipProtocolDispatcher implements Runnable {
-    private static final int WAIT_OTHERS_DELAY_MILLISECONDS = 200;
     private final MulticastConnection connection;
     private final ThreadPoolExecutor executor;
     private final MembershipView membershipView;
@@ -27,18 +26,18 @@ public class MembershipProtocolDispatcher implements Runnable {
         while(!connection.isClosed()) {
             try {
                 String receivedMessage = connection.receive();
-                executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor
-                ));
+                executor.submit(
+                        new MembershipProtocolHandler(receivedMessage, membershipView, executor, membershipHandler));
             } catch (SocketTimeoutException e) {
-                int delay = membershipView.getIndexInCluster() * WAIT_OTHERS_DELAY_MILLISECONDS;
-                membershipHandler.sendBroadcastMembership(delay);
+                membershipHandler.tryToAssumeMulticasterRole();
 
                 //membershipView.incrementBroadcasterIndex();
                 //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) {
                 ///    membershipHandler.sendBroadcastMembership();
                 //}
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
+                return;
             }
         }
     }
