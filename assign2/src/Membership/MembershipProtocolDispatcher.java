@@ -25,7 +25,7 @@ public class MembershipProtocolDispatcher implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("waiting for messages");
+        System.out.println("Waiting for messages");
         while(!connection.isClosed()) {
             try {
                 String receivedMessage = connection.receive();

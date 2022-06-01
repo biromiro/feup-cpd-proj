@@ -34,7 +34,7 @@ public class MembershipLog {
     }
 
     public List<MembershipLogEntry> get() {
-        return log;
+        return new ArrayList<>(log);
     }
 
     public String toString() {

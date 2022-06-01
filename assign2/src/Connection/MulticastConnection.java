@@ -50,9 +50,8 @@ public class MulticastConnection implements AutoCloseable {
     }
 
     public void leave() throws IOException {
-        System.out.println("Leaving group");
         if (joined) {
-            System.out.println("Leaving group should hv left");
+            System.out.println("Leaving group");
             socket.leaveGroup(new InetSocketAddress(host, port), NetworkInterface.getByName("lo"));
             this.joined = false;
         }

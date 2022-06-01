@@ -44,22 +44,27 @@ public class MembershipHandler {
         int membershipMessagesCount = 0;
 
         Future<AsynchronousSocketChannel> future = serverSocket.accept();
-        while (transmissionCount < MAX_RETRANSMISSION_TIMES) {
+        while (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
             try {
                 AsynchronousSocketChannel worker = future.get(MEMBERSHIP_ACCEPT_TIMEOUT, TimeUnit.MILLISECONDS);
+                membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
                 if (membershipMessagesCount < MAX_MEMBERSHIP_MESSAGES) {
                     future = serverSocket.accept();
-                } else break;
+                }
 
                 System.out.println("Received membership message from " + worker.getRemoteAddress());
 
-                membershipMessagesCount += 1; // TODO only increment this if message received was actually a MEMBERSHIP
                 executor.submit(new MembershipMessageHandler(new AsyncTcpConnection(worker), membershipView));
             } catch (TimeoutException e) {
-                System.out.println("There was a timeout, trying again");
-                // TODO nodes that have already replied shouldn't reply again, UNLESS their membership view changed
-                clusterConnection.send(message);
                 transmissionCount += 1;
+                if (transmissionCount > MAX_RETRANSMISSION_TIMES) {
+                    System.out.println("Limit of retransmissions reached.");
+                    break;
+                } else {
+                    System.out.println("There was a timeout, trying again");
+                    // TODO nodes that have already replied shouldn't reply again, UNLESS their membership view changed
+                    clusterConnection.send(message);
+                }
             } catch (InterruptedException ex) {
                 System.out.println("Server was not initialized: " + ex.getMessage());
             } catch (ExecutionException ex) {
@@ -67,6 +72,7 @@ public class MembershipHandler {
                 break;
             }
         }
+        serverSocket.close();
 
         return membershipMessagesCount != 0;
     }
@@ -121,12 +127,12 @@ public class MembershipHandler {
         if (!membershipView.mayMulticast()) {
             membershipView.becomeMulticasterCandidate();
             if (delay == 0) {
-                membershipView.isMulticasting();
+                membershipView.startMulticasting();
                 executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
             } else {
                 // TODO isto cria um novo executor. Nos so deviamos usar o executor original
                 CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
-                    membershipView.isMulticasting();
+                    membershipView.startMulticasting();
                     executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
                 });
             }
