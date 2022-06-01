@@ -31,7 +31,8 @@ public class MembershipMessageProtocol {
             builder.append(member).append("\n");
         }
         builder.append("\n");
-        for (MembershipLogEntry entry : membershipView.getLog()) {
+        int logSize = Math.min(32, membershipView.getLog().size());
+        for (MembershipLogEntry entry : membershipView.getLog().subList(0, logSize)) {
             builder.append(entry.toString()).append("\n");
         }
 
@@ -39,7 +40,7 @@ public class MembershipMessageProtocol {
                 .addHeaderEntry("MEMBERSHIP")
                 .addHeaderEntry("node", membershipView.getNodeId())
                 .addHeaderEntry("members", String.valueOf(membershipView.getMembers().size()))
-                .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
+                .addHeaderEntry("log", String.valueOf(logSize))
                 .setBody(builder.toString())
                 .toString();
     }
@@ -55,14 +56,15 @@ public class MembershipMessageProtocol {
     public static String membershipLog(MembershipView membershipView) {
         StringBuilder builder = new StringBuilder();
 
-        for (MembershipLogEntry entry : membershipView.getLog()) {
+        int logSize = Math.min(32, membershipView.getLog().size());
+        for (MembershipLogEntry entry : membershipView.getLog().subList(0, logSize)) {
             builder.append(entry.toString()).append("\n");
         }
 
         return new GenericMessageProtocol()
                 .addHeaderEntry("MEMBERSHIP")
                 .addHeaderEntry("node", membershipView.getNodeId())
-                .addHeaderEntry("log", String.valueOf(membershipView.getLog().size()))
+                .addHeaderEntry("log", String.valueOf(logSize))
                 .setBody(builder.toString())
                 .toString();
     }
