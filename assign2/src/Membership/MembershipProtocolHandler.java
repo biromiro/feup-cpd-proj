@@ -63,7 +63,7 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void determineIfShouldSendMembershipView(String host, int port, Map<String, Integer> blacklist) {
-        if (Objects.equals(blacklist.get(host), membershipView.getCount())) return;
+        if (Objects.equals(blacklist.get(membershipView.getNodeId()), membershipView.getCount())) return;
         if (membershipView.isMulticasting()) {
             sendMembershipView(host, port);
         } else {
