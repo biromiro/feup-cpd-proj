@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,14 +38,6 @@ public class PersistentStorage {
     }
 
     public AsynchronousFileChannel getFile(String fileName, OpenOption... options) throws IOException {
-        Set<OpenOption> set;
-        if (options.length == 0) {
-            set = Collections.emptySet();
-        } else {
-            set = new HashSet<>();
-            Collections.addAll(set, options);
-        }
-
         return AsynchronousFileChannel.open(
                 getPath(fileName),
                 Arrays.stream(options).collect(Collectors.toSet()),
@@ -123,6 +116,10 @@ public class PersistentStorage {
                 handler.failed(exc);
             }
         });
+    }
+
+    public void delete(String fileName) throws IOException {
+        Files.delete(getPath(fileName));
     }
 
     public void writeSync(String fileName, String content) throws IOException {

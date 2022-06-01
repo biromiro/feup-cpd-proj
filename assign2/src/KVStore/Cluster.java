@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Cluster {
-    private final List<NodeEntry> nodes;
+    private final List<KVEntry> nodes;
 
     public Cluster() {
         nodes = new ArrayList<>();
@@ -24,27 +24,25 @@ public class Cluster {
         return -failedIndex - 1;
     }
 
-    public boolean add(String node) {
-        NodeEntry nodeEntry = new NodeEntry(node);
-        int index = Collections.binarySearch(nodes, nodeEntry);
+    public void add(String node) {
+        KVEntry entry = new KVEntry(node);
+        int index = Collections.binarySearch(nodes, entry);
         if (index >= 0) {
-            return false;
+            return;
         }
-        nodes.add(insertionPoint(index), nodeEntry);
-        return true;
+        nodes.add(insertionPoint(index), entry);
     }
 
-    public boolean remove(String node) {
-        int index = Collections.binarySearch(nodes, new NodeEntry(node));
+    public void remove(String node) {
+        int index = Collections.binarySearch(nodes, new KVEntry(node));
         if (index < 0) {
-            return false;
+            return;
         }
         nodes.remove(index);
-        return true;
     }
 
     public String predecessor(String key) {
-        int index = Collections.binarySearch(nodes, new NodeEntry(key));
+        int index = Collections.binarySearch(nodes, new KVEntry(key));
         if (index < 0) {
             index = insertionPoint(index);
         }
@@ -53,7 +51,7 @@ public class Cluster {
     }
 
     public String successor(String key) {
-        int index = Collections.binarySearch(nodes, new NodeEntry(key));
+        int index = Collections.binarySearch(nodes, new KVEntry(key));
         if (index < 0) {
             index = insertionPoint(index) % nodes.size();
         }
@@ -61,7 +59,7 @@ public class Cluster {
     }
 
     public List<String> getMembers() {
-        return nodes.stream().map(NodeEntry::getValue).collect(Collectors.toList());
+        return nodes.stream().map(KVEntry::getValue).collect(Collectors.toList());
     }
 
     public int size() {

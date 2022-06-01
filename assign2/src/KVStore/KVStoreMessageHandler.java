@@ -4,15 +4,19 @@ import Connection.AsyncTcpConnection;
 import Membership.MembershipView;
 import Message.ClientServerMessageProtocol;
 import Message.MessageProtocolException;
+import Storage.Bucket;
+import Storage.PersistentStorage;
 
 public class KVStoreMessageHandler {
     private final String localNodeId;
     private final AsyncTcpConnection worker;
+    private final Bucket bucket;
     private final MembershipView membershipView;
 
-    public KVStoreMessageHandler(String localNodeId, AsyncTcpConnection worker, MembershipView membershipView) {
+    public KVStoreMessageHandler(String localNodeId, AsyncTcpConnection worker, Bucket bucket, MembershipView membershipView) {
         this.localNodeId = localNodeId;
         this.worker = worker;
+        this.bucket = bucket;
         this.membershipView = membershipView;
     }
 
@@ -52,25 +56,73 @@ public class KVStoreMessageHandler {
         }
     }
 
+    private class LocalGetHandler implements PersistentStorage.ReadHandler {
+
+        @Override
+        public void completed(Integer len, String message) {
+            worker.write(message, new ReturnGetHandler());
+        }
+
+        @Override
+        public void failed(Throwable exc) {
+            throw new RuntimeException("Failed to get from my bucket", exc);
+        }
+    }
+
+    private class ReturnGetHandler implements AsyncTcpConnection.WriteHandler {
+        @Override
+        public void completed(Integer result) {
+
+        }
+
+        @Override
+        public void failed(Throwable exc) {
+            throw new RuntimeException("Failed to give the value to requester.", exc);
+        }
+    }
+
     private void handleGet(String key) {
         Cluster cluster = membershipView.getCluster();
         String successor = cluster.successor(key);
-        if (successor.equals(this.localNodeId)) {
-            // Answer
+        // If node has key, get it and send it back
+        if (successor.equals(localNodeId)) {
+            bucket.get(key, new LocalGetHandler());
         } else {
-            // Ask successor
+            //TODO connect w/ TCP to destination node, ask for get, wait for response, then send it back.
+        }
+    }
+
+    private class LocalPutHandler implements PersistentStorage.WriteHandler {
+
+        @Override
+        public void completed(Integer result) {
+
         }
 
-        //TCP connection to get entry from there
-        // TODO
+        @Override
+        public void failed(Throwable exc) {
+            throw new RuntimeException("Failed to put on my bucket", exc);
+        }
     }
 
     private void handlePut(String key, String value) {
-        // TODO
+        Cluster cluster = membershipView.getCluster();
+        String successor = cluster.successor(key);
+        if (successor.equals(localNodeId)) {
+            bucket.put(key, value, new LocalPutHandler());
+        } else {
+            //TODO connect w/ TCP to destination node and ask for put.
+        }
     }
 
     private void handleDelete(String key) {
-        // TODO
+        Cluster cluster = membershipView.getCluster();
+        String successor = cluster.successor(key);
+        if (successor.equals(localNodeId)) {
+            bucket.delete(key);
+        } else {
+            //TODO connect w/ TCP to destination node and ask for deletion.
+        }
     }
 
 }
