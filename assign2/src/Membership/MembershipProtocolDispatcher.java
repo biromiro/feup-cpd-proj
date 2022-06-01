@@ -4,9 +4,7 @@ import Connection.MulticastConnection;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class MembershipProtocolDispatcher implements Runnable {
     private static final int WAIT_OTHERS_DELAY_MILLISECONDS = 200;
@@ -29,8 +27,8 @@ public class MembershipProtocolDispatcher implements Runnable {
         while(!connection.isClosed()) {
             try {
                 String receivedMessage = connection.receive();
-                executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor,
-                        membershipHandler));
+                executor.submit(new MembershipProtocolHandler(receivedMessage, membershipView, executor
+                ));
             } catch (SocketTimeoutException e) {
                 int delay = membershipView.getIndexInCluster() * WAIT_OTHERS_DELAY_MILLISECONDS;
                 membershipHandler.sendBroadcastMembership(delay);

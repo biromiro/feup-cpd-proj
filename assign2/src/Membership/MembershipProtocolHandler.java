@@ -3,21 +3,22 @@ package Membership;
 import Message.MembershipMessageProtocol;
 import Message.MessageProtocolException;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class MembershipProtocolHandler implements Runnable {
     private static final int MEMBERSHIP_THRESHOLD_SEND = 5;
+    private static final double MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS = 1000;
     private final String receivedMessage;
     private final MembershipView membershipView;
     private final ThreadPoolExecutor executor;
-    private final MembershipHandler membershipHandler;
 
-    public MembershipProtocolHandler(String receivedMessage, MembershipView membershipView, ThreadPoolExecutor executor,
-                                     MembershipHandler membershipHandler) {
+    public MembershipProtocolHandler(String receivedMessage, MembershipView membershipView,
+                                     ThreadPoolExecutor executor) {
         this.receivedMessage = receivedMessage;
         this.membershipView = membershipView;
         this.executor = executor;
-        this.membershipHandler = membershipHandler;
     }
 
     @Override
@@ -51,13 +52,20 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void sendMembershipView(String host, int port) {
-        if (membershipView.isMulticasting()) {
+        int delay = (int) (Math.random() * MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS);
+        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
             executor.submit(new MembershipMessageDispatcher(executor, membershipView, host, port));
+        });
+    }
+
+    private void determineIfShouldSendMembershipView(String host, int port) {
+        if (membershipView.isMulticasting()) {
+            sendMembershipView(host, port);
         } else {
             double probability = Math.min(1.0,
                     (double) MEMBERSHIP_THRESHOLD_SEND / (membershipView.getCluster().size() - 1));
             if (Math.random() < probability) {
-                executor.submit(new MembershipMessageDispatcher(executor, membershipView, host, port));
+                sendMembershipView(host, port);
             }
         }
     }
@@ -65,7 +73,7 @@ public class MembershipProtocolHandler implements Runnable {
     private void handleJoin(MembershipMessageProtocol.Join joinMessage) {
         membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
 
-        this.sendMembershipView(joinMessage.getId(), joinMessage.getPort());
+        this.determineIfShouldSendMembershipView(joinMessage.getId(), joinMessage.getPort());
     }
 
     private void handleLeave(MembershipMessageProtocol.Leave leaveMessage) {
@@ -85,6 +93,6 @@ public class MembershipProtocolHandler implements Runnable {
 
     private void handleReinitialize(MembershipMessageProtocol.Reinitialize reinitializeMessage) {
         // TODO maybe should send the membership counter as well on reinitialize message?
-        this.sendMembershipView(reinitializeMessage.getId(), reinitializeMessage.getPort());
+        this.determineIfShouldSendMembershipView(reinitializeMessage.getId(), reinitializeMessage.getPort());
     }
 }
