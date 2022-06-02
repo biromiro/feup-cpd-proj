@@ -32,11 +32,11 @@ public class Node implements MembershipService {
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
 
-        PersistentStorage storage = new PersistentStorage(nodeId, this.executor);
+        PersistentStorage storage = new PersistentStorage(nodeId, "storage", this.executor);
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
-        this.bucket = new Bucket(storage);
+        this.bucket = new Bucket(new PersistentStorage("bucket", "storage/" + nodeId, this.executor));
 
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
     }

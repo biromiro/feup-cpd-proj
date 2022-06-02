@@ -23,9 +23,16 @@ public class ClientServerMessageProtocol {
 
     public static String put(KVEntry entry) {
         return new GenericMessageProtocol()
-                .addHeaderEntry("GET")
+                .addHeaderEntry("PUT")
                 .addHeaderEntry("key", entry.getKey())
                 .setBody(entry.getValue())
+                .toString();
+    }
+
+    public static String redirect(String node) {
+        return new GenericMessageProtocol()
+                .addHeaderEntry("REDIRECT")
+                .addHeaderEntry("node", node)
                 .toString();
     }
 
@@ -68,6 +75,17 @@ public class ClientServerMessageProtocol {
         }
     }
 
+    public static class Redirect extends ClientServerMessageProtocol {
+        private String node;
+        public Redirect(String node) {
+            this.node = node;
+        }
+
+        public String getNode() {
+            return this.node;
+        }
+    }
+
     public static ClientServerMessageProtocol parse(String message) throws MessageProtocolException {
         GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
         List<List<String>> headers = GenericMessageProtocol.firstHeaderIsMessageType(parsedMessage.getHeaders());
@@ -87,9 +105,15 @@ public class ClientServerMessageProtocol {
             }
             case "PUT" -> {
                 Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
-                GenericMessageProtocol.ensureOnlyContains(fields, new ArrayList<>());
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of("key"));
 
                 return new ClientServerMessageProtocol.Put(fields.get("key"), parsedMessage.getBody());
+            }
+            case "REDIRECT" -> {
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of("node"));
+
+                return new ClientServerMessageProtocol.Redirect(fields.get("node"));
             }
             default -> throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');

@@ -56,6 +56,19 @@ public class KVStoreMessageHandler {
         }
     }
 
+    private void redirect(String successor) {
+        worker.write(ClientServerMessageProtocol.redirect(successor), new AsyncTcpConnection.WriteHandler() {
+            @Override
+            public void completed(Integer result) {
+            }
+
+            @Override
+            public void failed(Throwable exc) {
+
+            }
+        });
+    }
+
     private class LocalGetHandler implements PersistentStorage.ReadHandler {
 
         @Override
@@ -88,7 +101,7 @@ public class KVStoreMessageHandler {
         if (successor.equals(localNodeId)) {
             bucket.get(key, new LocalGetHandler());
         } else {
-            //TODO connect w/ TCP to destination node, ask for get, wait for response, then send it back.
+            redirect(successor);
         }
     }
 
@@ -111,7 +124,7 @@ public class KVStoreMessageHandler {
         if (successor.equals(localNodeId)) {
             bucket.put(key, value, new LocalPutHandler());
         } else {
-            //TODO connect w/ TCP to destination node and ask for put.
+            redirect(successor);
         }
     }
 
@@ -121,7 +134,7 @@ public class KVStoreMessageHandler {
         if (successor.equals(localNodeId)) {
             bucket.delete(key);
         } else {
-            //TODO connect w/ TCP to destination node and ask for deletion.
+            redirect(successor);
         }
     }
 

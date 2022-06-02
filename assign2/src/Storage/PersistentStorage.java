@@ -19,18 +19,19 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardOpenOption.*;
 
 public class PersistentStorage {
-    private static final String BASE_FOLDER = "storage";
+    private final String baseFolder;
     private static final int READ_BUFFER_SIZE = 1024;
     private final ThreadPoolExecutor executor;
-    private final String id;
+    private final String fileName;
 
-    public PersistentStorage(String id, ThreadPoolExecutor executor) {
-        this.id = id;
+    public PersistentStorage(String fileName, String baseFolder, ThreadPoolExecutor executor) {
+        this.fileName = fileName;
+        this.baseFolder = baseFolder;
         this.executor = executor;
-        File file = new File(BASE_FOLDER, this.id);
+        File file = new File(baseFolder, this.fileName);
         if (!file.exists()) {
             if (!file.mkdirs()) {
-                throw new RuntimeException("Could not create directory " + id + ".");
+                throw new RuntimeException("Could not create directory " + fileName + ".");
             }
         } else if (!file.isDirectory()) {
             throw new RuntimeException(file + " is not a directory.");
@@ -50,7 +51,7 @@ public class PersistentStorage {
     }
 
     public Path getPath(String fileName) {
-        return Paths.get(BASE_FOLDER, this.id, fileName);
+        return Paths.get(baseFolder, this.fileName, fileName);
     }
 
     public interface WriteHandler {
@@ -118,8 +119,8 @@ public class PersistentStorage {
         });
     }
 
-    public void delete(String fileName) throws IOException {
-        Files.delete(getPath(fileName));
+    public void deleteIfExists(String fileName) throws IOException {
+        Files.deleteIfExists(getPath(fileName));
     }
 
     public void writeSync(String fileName, String content) throws IOException {

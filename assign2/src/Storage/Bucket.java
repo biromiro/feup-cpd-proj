@@ -3,7 +3,6 @@ package Storage;
 import java.io.IOException;
 
 public class Bucket {
-    private static final String BUCKET_FOLDER = "bucket/";
     private static final String TOMBSTONE_EXT = ".DEAD";
     private final PersistentStorage storage;
 
@@ -12,17 +11,17 @@ public class Bucket {
     }
 
     public void get(String key, PersistentStorage.ReadHandler handler) {
-        storage.read(keyFile(key), handler);
+        storage.read(key, handler);
     }
 
     public void put(String key, String value, PersistentStorage.WriteHandler handler) {
         try {
-            storage.delete(tombstone(key));
+            storage.deleteIfExists(tombstone(key));
         } catch (IOException ex) {
             throw new RuntimeException("Failed to delete tombstone for key: " + key);
         }
 
-        storage.write(keyFile(key), value, handler);
+        storage.write(key, value, handler);
     }
 
     public void delete(String key){
@@ -30,7 +29,7 @@ public class Bucket {
             @Override
             public void completed(Integer result) {
                 try {
-                    storage.delete(keyFile(key));
+                    storage.deleteIfExists(key);
                 } catch (IOException ex) {
                     throw new RuntimeException("Failed to delete pair with key: " + key, ex);
                 }
@@ -42,11 +41,7 @@ public class Bucket {
         });
     }
 
-    private String keyFile(String key) {
-        return BUCKET_FOLDER + key;
-    }
-
     private String tombstone(String key) {
-        return keyFile(key + TOMBSTONE_EXT);
+        return key + TOMBSTONE_EXT;
     }
 }
