@@ -7,7 +7,7 @@ import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class AsyncTcpConnection implements AutoCloseable {
     private static final int RECEIVE_BUFFER_SIZE = 2048;
@@ -22,7 +22,7 @@ public class AsyncTcpConnection implements AutoCloseable {
         void failed(Throwable exc);
     }
 
-    public static void connect(ThreadPoolExecutor executor, String host, int port, ConnectionHandler handler) {
+    public static void connect(ScheduledThreadPoolExecutor executor, String host, int port, ConnectionHandler handler) {
         AsynchronousSocketChannel socket;
         try {
              socket = AsynchronousSocketChannel.open(AsynchronousChannelGroup.withThreadPool(executor));

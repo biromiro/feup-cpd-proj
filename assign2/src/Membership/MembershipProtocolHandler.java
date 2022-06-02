@@ -5,8 +5,7 @@ import Message.MessageProtocolException;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class MembershipProtocolHandler implements Runnable {
@@ -14,11 +13,11 @@ public class MembershipProtocolHandler implements Runnable {
     private static final double MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS = 1000;
     private final String receivedMessage;
     private final MembershipView membershipView;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
     private final MembershipHandler membershipHandler;
 
     public MembershipProtocolHandler(String receivedMessage, MembershipView membershipView,
-                                     ThreadPoolExecutor executor, MembershipHandler handler) {
+                                     ScheduledThreadPoolExecutor executor, MembershipHandler handler) {
         this.receivedMessage = receivedMessage;
         this.membershipView = membershipView;
         this.executor = executor;
@@ -56,10 +55,9 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void sendMembershipView(String host, int port) {
-        int delay = (int) (Math.random() * MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS);
-        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
-            executor.submit(new MembershipMessageDispatcher(executor, membershipView, host, port));
-        });
+        long delay = (long) (Math.random() * MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS);
+        executor.schedule(
+                new MembershipMessageDispatcher(executor, membershipView, host, port), delay, TimeUnit.MILLISECONDS);
     }
 
     private void determineIfShouldSendMembershipView(String host, int port, Map<String, Integer> blacklist) {

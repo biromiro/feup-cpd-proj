@@ -4,15 +4,15 @@ import Connection.AsyncTcpConnection;
 import Message.MembershipMessageProtocol;
 
 import java.io.IOException;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class MembershipMessageDispatcher implements Runnable{
     private final int port;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
     private final MembershipView membershipView;
     private String host;
 
-    MembershipMessageDispatcher(ThreadPoolExecutor executor, MembershipView membershipView, String host, int port) {
+    MembershipMessageDispatcher(ScheduledThreadPoolExecutor executor, MembershipView membershipView, String host, int port) {
         this.executor = executor;
         this.membershipView = membershipView;
         this.host = host;

@@ -13,7 +13,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 import static java.nio.file.StandardOpenOption.*;
@@ -21,10 +21,10 @@ import static java.nio.file.StandardOpenOption.*;
 public class PersistentStorage {
     private final String baseFolder;
     private static final int READ_BUFFER_SIZE = 1024;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
     private final String fileName;
 
-    public PersistentStorage(String fileName, String baseFolder, ThreadPoolExecutor executor) {
+    public PersistentStorage(String fileName, String baseFolder, ScheduledThreadPoolExecutor executor) {
         this.fileName = fileName;
         this.baseFolder = baseFolder;
         this.executor = executor;

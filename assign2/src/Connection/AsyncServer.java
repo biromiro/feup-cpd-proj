@@ -6,26 +6,25 @@ import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class AsyncServer implements AutoCloseable {
     private final InetSocketAddress address;
     private final AsynchronousServerSocketChannel socket;
 
-    public AsyncServer(InetSocketAddress address, ThreadPoolExecutor executor) throws IOException {
+    public AsyncServer(InetSocketAddress address, ScheduledThreadPoolExecutor executor) throws IOException {
         this.socket = AsynchronousServerSocketChannel
                 .open(AsynchronousChannelGroup.withThreadPool(executor))
                 .bind(address);
         this.address = (InetSocketAddress) this.socket.getLocalAddress();
     }
 
-    public AsyncServer(int port, ThreadPoolExecutor executor) throws IOException {
+    public AsyncServer(int port, ScheduledThreadPoolExecutor executor) throws IOException {
         this(new InetSocketAddress(port), executor);
     }
 
-    public AsyncServer(ThreadPoolExecutor executor) throws IOException {
+    public AsyncServer(ScheduledThreadPoolExecutor executor) throws IOException {
         this(new InetSocketAddress(0), executor);
     }
 

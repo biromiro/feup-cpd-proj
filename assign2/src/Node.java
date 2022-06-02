@@ -11,7 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class Node implements MembershipService {
     private final String nodeId;
@@ -20,7 +20,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final Bucket bucket;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
     private static final int NUM_THREADS_PER_CORE = 4;
 
     public Node(String mcastAddr, int mcastPort, String nodeId, int storePort) {
@@ -30,7 +30,7 @@ public class Node implements MembershipService {
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
         int numberThreads = Runtime.getRuntime().availableProcessors() * NUM_THREADS_PER_CORE;
         System.out.println("There are " + numberThreads + " threads in the pool.");
-        this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(numberThreads);
+        this.executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(numberThreads);
 
         PersistentStorage storage = new PersistentStorage(nodeId, "storage", this.executor);
         this.membershipCounter = new MembershipCounter(storage);

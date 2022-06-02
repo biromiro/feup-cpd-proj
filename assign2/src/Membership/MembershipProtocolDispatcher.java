@@ -5,16 +5,16 @@ import Connection.MulticastConnection;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class MembershipProtocolDispatcher implements Runnable {
     private final MulticastConnection connection;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
 
     MembershipProtocolDispatcher(MembershipHandler membershipHandler, MulticastConnection connection,
-                                 ThreadPoolExecutor executor, MembershipView membershipView) {
+                                 ScheduledThreadPoolExecutor executor, MembershipView membershipView) {
         this.connection = connection;
         this.executor = executor;
         this.membershipView = membershipView;

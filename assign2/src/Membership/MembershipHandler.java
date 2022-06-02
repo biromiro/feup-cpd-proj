@@ -8,7 +8,6 @@ import Message.MessageProtocolException;
 
 import java.io.IOException;
 import java.nio.channels.AsynchronousSocketChannel;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -16,16 +15,17 @@ public class MembershipHandler {
     private static final int MAX_MEMBERSHIP_MESSAGES = 3;
     private static final int MEMBERSHIP_ACCEPT_TIMEOUT = 1000;
     private static final int MAX_RETRANSMISSION_TIMES = 3;
-    private static final int WAIT_OTHERS_DELAY_MILLISECONDS = 200;
+    private static final long WAIT_OTHERS_DELAY_MILLISECONDS = 200;
+    private static final long TIME_BETWEEN_MEMBERSHIP_MULTICASTS = 1000;
     private final String mcastAddr;
     private final int mcastPort;
     private final String nodeId;
     private final MembershipView membershipView;
     private MulticastConnection clusterConnection;
-    private final ThreadPoolExecutor executor;
+    private final ScheduledThreadPoolExecutor executor;
 
     public MembershipHandler(String mcastAddr, int mcastPort, String nodeId,
-                             MembershipView membershipView, ThreadPoolExecutor executor) {
+                             MembershipView membershipView, ScheduledThreadPoolExecutor executor) {
         this.mcastAddr = mcastAddr;
         this.mcastPort = mcastPort;
         this.nodeId = nodeId;
@@ -111,7 +111,7 @@ public class MembershipHandler {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.JOIN, count)) {
                 membershipView.updateMember(nodeId, count);
-                this.sendBroadcastMembership(0);
+                this.sendMulticastMembership(0);
             }
 
         } catch (IOException e) {
@@ -139,32 +139,24 @@ public class MembershipHandler {
         try (AsyncServer serverSocket = new AsyncServer(executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.REINITIALIZE, 0)) {
-                this.sendBroadcastMembership(0);
+                this.sendMulticastMembership(0);
             }
-            //if (membershipView.isBroadcaster() && !membershipView.isBroadcasting()) this.sendBroadcastMembership();
         } catch (IOException e) {
             throw new RuntimeException("Failed to connect to async server upon reinitialize message.", e);
         }
     }
 
-    public void sendBroadcastMembership(int delay) {
-        if (!membershipView.mayMulticast()) {
-            membershipView.becomeMulticasterCandidate();
-            if (delay == 0) {
-                membershipView.startMulticasting();
-                executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
-            } else {
-                // TODO isto cria um novo executor. Nos so deviamos usar o executor original
-                CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
-                    membershipView.startMulticasting();
-                    executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
-                });
-            }
-        }
+    public void sendMulticastMembership(long delay) {
+        membershipView.becomeMulticasterCandidate(
+                executor.scheduleWithFixedDelay(
+                        new MembershipEchoMessageSender(clusterConnection, membershipView),
+                        delay, TIME_BETWEEN_MEMBERSHIP_MULTICASTS, TimeUnit.MILLISECONDS
+                )
+        );
     }
 
     public void tryToAssumeMulticasterRole() {
-        int delay = membershipView.getIndexInCluster() * WAIT_OTHERS_DELAY_MILLISECONDS;
-        this.sendBroadcastMembership(delay);
+        long delay = membershipView.getIndexInCluster() * WAIT_OTHERS_DELAY_MILLISECONDS;
+        this.sendMulticastMembership(delay);
     }
 }

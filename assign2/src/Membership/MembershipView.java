@@ -6,12 +6,14 @@ import Storage.MembershipLog;
 import Storage.MembershipLogEntry;
 
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 
 public class MembershipView {
     private final MembershipLog membershipLog;
     private final String currentNodeID;
     private Cluster cluster;
     private MulticasterState multicasterState;
+    private ScheduledFuture<?> task;
 
     public MembershipView(MembershipLog membershipLog, String currentNodeID) {
         this.membershipLog = membershipLog;
@@ -69,18 +71,30 @@ public class MembershipView {
         return nodeIDs.indexOf(this.currentNodeID);
     }
 
-    public void startMulticasting() {
-        this.multicasterState = MulticasterState.MULTICASTING_MEMBERSHIP;
-    }
-    public void stopMulticasting() {
-        this.multicasterState = MulticasterState.NOT_MULTICASTING_MEMBERSHIP;
-    }
-    public void becomeMulticasterCandidate() {
+    public synchronized void becomeMulticasterCandidate(ScheduledFuture<?> task) {
+        if (this.task != null) {
+            this.task.cancel(true);
+        }
+        this.task = task;
         this.multicasterState = MulticasterState.MULTICASTING_CANDIDATE;
     }
+    public synchronized void startMulticasting() {
+        if (this.task != null && this.multicasterState == MulticasterState.MULTICASTING_CANDIDATE) {
+            this.multicasterState = MulticasterState.MULTICASTING_MEMBERSHIP;
+        }
+    }
+    public synchronized void stopMulticasting() {
+        if (this.task != null) {
+            this.task.cancel(true);
+        }
+        this.task = null;
+        this.multicasterState = MulticasterState.NOT_MULTICASTING_MEMBERSHIP;
+    }
+
     public boolean isMulticasting() {
         return multicasterState == MulticasterState.MULTICASTING_MEMBERSHIP;
     }
+
     public boolean mayMulticast() {
         return multicasterState == MulticasterState.MULTICASTING_CANDIDATE
                 || multicasterState == MulticasterState.MULTICASTING_MEMBERSHIP;
