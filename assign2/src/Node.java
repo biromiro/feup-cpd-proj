@@ -105,7 +105,6 @@ public class Node implements MembershipService {
         listener.loop(new AsyncServer.ConnectionHandler() {
             @Override
             public void completed(AsyncTcpConnection channel) {
-                // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
                 new KVStoreMessageHandler(membershipCounter.isJoin(), nodeId, channel, bucket, membershipView)
                         .run();
             }

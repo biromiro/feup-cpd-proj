@@ -56,8 +56,6 @@ public class MembershipView {
     }
 
     public boolean merge(List<String> members, List<MembershipLogEntry> log) {
-        // TODO recycle hashes as much as possible
-        // TODO merge clusters
         this.cluster.replace(members);
         return this.merge(log);
     }

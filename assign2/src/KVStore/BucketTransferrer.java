@@ -72,7 +72,6 @@ public class BucketTransferrer {
             }
 
             String key = iterator.next();
-            System.out.println("Fetching " + key);
             bucket.get(key, new TransferHandler(key, this));
         }
 
@@ -98,7 +97,6 @@ public class BucketTransferrer {
 
         @Override
         public void completed(Integer len, String message) {
-            System.out.println("TRANSFERRIGN " + key);
             handler.getConnection().write(ClientServerMessageProtocol.transfer(key, message), handler);
         }
 
@@ -112,7 +110,6 @@ public class BucketTransferrer {
     private void transferKeys(String destination, List<String> keys, Function<Void, Void> whenTransferred) {
         if (keys.isEmpty()) {
             whenTransferred.apply(null);
-            System.out.println("TRANSFER ERROR");
             return;
         }
         ListIterator<String> iterator = keys.listIterator();
@@ -150,12 +147,9 @@ public class BucketTransferrer {
         List<String> keys = bucket.getMarkedKeys();
 
         int[] completed = new int[1];
-        System.out.println(destinations);
-        System.out.println(destinations.size());
         for (int i = 0; i < destinations.size(); i++) {
             int index = i;
             transferKeys(destinations.get(i), keys, (_null) -> {
-                System.out.println("ONE TRANSFER COMPLETED");
                 synchronized (completed) {
                     completed[0]++;
                     if (completed[0] == destinations.size()) {
