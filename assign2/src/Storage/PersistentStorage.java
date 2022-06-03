@@ -54,6 +54,12 @@ public class PersistentStorage {
         return Paths.get(baseFolder, this.fileName, fileName);
     }
 
+    public List<String> list() {
+        File folder = new File(baseFolder);
+        String[] fileList = folder.list();
+        return fileList == null ? List.of() : Arrays.stream(fileList).toList();
+    }
+
     public interface WriteHandler {
         void completed(Integer result);
         void failed(Throwable exc);

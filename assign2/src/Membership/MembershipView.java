@@ -1,24 +1,30 @@
 package Membership;
 
+import KVStore.BucketTransferrer;
 import KVStore.Cluster;
+import Storage.Bucket;
 import Storage.MembershipCounter;
 import Storage.MembershipLog;
 import Storage.MembershipLogEntry;
 
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class MembershipView {
     private final MembershipLog membershipLog;
     private final String currentNodeID;
     private Cluster cluster;
     private MulticasterState multicasterState;
+    private final BucketTransferrer transferrer;
     private ScheduledFuture<?> task;
 
-    public MembershipView(MembershipLog membershipLog, String currentNodeID) {
+    public MembershipView(MembershipLog membershipLog, String currentNodeID, Cluster cluster, BucketTransferrer transferrer) {
         this.membershipLog = membershipLog;
         this.currentNodeID = currentNodeID;
-        this.cluster = new Cluster();
+        this.cluster = cluster;
+        this.transferrer = transferrer;
+
         for (MembershipLogEntry entry : membershipLog.get()) {
             if (MembershipCounter.isJoin(entry.membershipCounter())) {
                 cluster.add(entry.nodeId());
@@ -41,10 +47,17 @@ public class MembershipView {
         int counter = membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
 
         if (MembershipCounter.isJoin(counter)) {
-            cluster.add(nodeId);
+            if (cluster.add(nodeId))
+                transferrer.transfer(nodeId);
         } else {
             cluster.remove(nodeId);
         }
+    }
+
+    private void shareTable(String nodeId) {
+        // TODO ler do bucket entrada a entrada:
+        //      ver se a key bate certo com o gajo:
+        //          se sim, mandar
     }
 
     public boolean merge(List<String> members, List<MembershipLogEntry> log) {

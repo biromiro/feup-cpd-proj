@@ -1,5 +1,7 @@
 import Connection.AsyncServer;
 import Connection.AsyncTcpConnection;
+import KVStore.BucketTransferrer;
+import KVStore.Cluster;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
 import Storage.*;
@@ -19,6 +21,7 @@ public class Node implements MembershipService {
     private final MembershipView membershipView;
     private final MembershipHandler membershipHandler;
     private final Bucket bucket;
+    private final BucketTransferrer transferrer;
     private final ScheduledThreadPoolExecutor executor;
     private static final int NUM_THREADS_PER_CORE = 4;
 
@@ -32,10 +35,12 @@ public class Node implements MembershipService {
         this.executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(numberThreads);
 
         PersistentStorage storage = new PersistentStorage(nodeId, "storage", this.executor);
+        this.bucket = new Bucket(storage);
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
-        this.membershipView = new MembershipView(membershipLog, this.nodeId);
-        this.bucket = new Bucket(storage);
+        Cluster cluster = new Cluster();
+        this.transferrer = new BucketTransferrer(this.nodeId, bucket, cluster, executor, storePort);
+        this.membershipView = new MembershipView(membershipLog, this.nodeId, cluster, transferrer);
 
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, this.nodeId, membershipView, executor);
     }
@@ -59,7 +64,6 @@ public class Node implements MembershipService {
 
         membershipHandler.join(membershipCounter.get());
         membershipHandler.receive();
-        // TODO get information from predecessor
     }
 
     @Override
@@ -71,6 +75,7 @@ public class Node implements MembershipService {
         incrementCounter();
 
         // TODO transfer information to successor
+        transferrer.transfer();
         membershipHandler.leave(membershipCounter.get());
     }
 

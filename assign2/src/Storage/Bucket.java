@@ -2,6 +2,8 @@ package Storage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Bucket {
     private static final String baseFolder = "bucket/";
@@ -33,7 +35,7 @@ public class Bucket {
         storage.write(keyFile(key), value, handler);
     }
 
-    public void delete(String key){
+    public void delete(String key) {
         storage.write(tombstoneFile(key), "", new PersistentStorage.WriteHandler() {
             @Override
             public void completed(Integer result) {
@@ -48,6 +50,10 @@ public class Bucket {
                 throw new RuntimeException("Failed to write tombstone for key: " + key, exc);
             }
         });
+    }
+
+    public List<String> getMarkedKeys() {
+        return storage.list();
     }
 
     private String tombstoneFile(String key) {
