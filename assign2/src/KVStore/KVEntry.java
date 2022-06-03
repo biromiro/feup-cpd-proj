@@ -42,6 +42,7 @@ public class KVEntry implements Comparable<KVEntry> {
         return "( " +  key + " : \"" + value + "\" )";
     }
 
+    @Override
     public int compareTo(KVEntry entry) {
         return this.key.compareTo(entry.getKey());
     }

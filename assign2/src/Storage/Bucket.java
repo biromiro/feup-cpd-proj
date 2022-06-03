@@ -63,4 +63,12 @@ public class Bucket {
     private String keyFile(String key) {
         return baseFolder + key;
     }
+
+    public void destroy(String filename) {
+        try {
+            storage.deleteIfExists(keyFile(filename));
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to destroy mark for key: " + filename);
+        }
+    }
 }

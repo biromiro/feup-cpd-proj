@@ -29,7 +29,6 @@ public class Node implements MembershipService {
         this.nodeId = nodeId;
         this.storePort = storePort;
 
-        // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
         int numberThreads = Runtime.getRuntime().availableProcessors() * NUM_THREADS_PER_CORE;
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(numberThreads);
@@ -56,7 +55,6 @@ public class Node implements MembershipService {
     @Override
     public void join() throws RemoteException {
         if (membershipCounter.isJoin()) {
-            // TODO faz sentido isto ser dito no cliente ou no servidor?
             System.out.println("Node is already in the cluster.");
             return;
         }
@@ -74,9 +72,10 @@ public class Node implements MembershipService {
         }
         incrementCounter();
 
-        // TODO transfer information to successor
-        transferrer.transfer();
-        membershipHandler.leave(membershipCounter.get());
+        transferrer.transfer((_null) -> {
+            membershipHandler.leave(membershipCounter.get());
+            return null;
+        });
     }
 
     public void bindRMI(String name) {

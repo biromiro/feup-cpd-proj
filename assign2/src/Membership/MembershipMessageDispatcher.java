@@ -21,7 +21,6 @@ public class MembershipMessageDispatcher implements Runnable{
 
     @Override
     public void run() {
-        System.out.println("Sending membership view to " + host + ":" + port);
         AsyncTcpConnection.connect(executor, host, port, new AsyncTcpConnection.ConnectionHandler() {
             @Override
             public void completed(AsyncTcpConnection connection) {

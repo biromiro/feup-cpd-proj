@@ -20,6 +20,13 @@ public class Cluster {
         }
     }
 
+    public void replace(List<String> members) {
+        nodes.clear();
+        for (String node: members) {
+            add(node);
+        }
+    }
+
     private int insertionPoint(int failedIndex) {
         return -failedIndex - 1;
     }

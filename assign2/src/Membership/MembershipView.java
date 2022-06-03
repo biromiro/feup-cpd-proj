@@ -55,16 +55,10 @@ public class MembershipView {
         }
     }
 
-    private void shareTable(String nodeId) {
-        // TODO ler do bucket entrada a entrada:
-        //      ver se a key bate certo com o gajo:
-        //          se sim, mandar
-    }
-
     public boolean merge(List<String> members, List<MembershipLogEntry> log) {
         // TODO recycle hashes as much as possible
         // TODO merge clusters
-        this.cluster = new Cluster(members);
+        this.cluster.replace(members);
         return this.merge(log);
     }
 

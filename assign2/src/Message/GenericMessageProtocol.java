@@ -36,7 +36,7 @@ public class GenericMessageProtocol {
                     + String.join(" ", headers.get(1)) + '\'');
         }
 
-        System.out.println("HEADERS: " + headers);
+        System.out.println("NEW MESSAGE. HEADERS: " + headers);
 
         return headers.subList(1, headers.size());
     }

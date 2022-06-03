@@ -1,6 +1,7 @@
 package KVStore;
 
 import Connection.AsyncTcpConnection;
+import Membership.MembershipHandler;
 import Message.ClientServerMessageProtocol;
 import Storage.Bucket;
 import Storage.PersistentStorage;
@@ -8,6 +9,7 @@ import Storage.PersistentStorage;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.function.Function;
 
 public class BucketTransferrer {
     private final String nodeId;
@@ -15,6 +17,7 @@ public class BucketTransferrer {
     private final Cluster cluster;
     private final ScheduledThreadPoolExecutor executor;
     private final int storePort;
+
     public BucketTransferrer(String nodeId, Bucket bucket, Cluster cluster, ScheduledThreadPoolExecutor executor, int storePort) {
         this.nodeId = nodeId;
         this.bucket = bucket;
@@ -26,9 +29,11 @@ public class BucketTransferrer {
     private class FetchHandler implements AsyncTcpConnection.ConnectionHandler, AsyncTcpConnection.WriteHandler {
         private final ListIterator<String> iterator;
         private AsyncTcpConnection connection;
+        private final Function<Void, Void> whenTransferred;
 
-        public FetchHandler(ListIterator<String> iterator) {
+        public FetchHandler(ListIterator<String> iterator, Function<Void, Void> whenTransferred) {
             this.iterator = iterator;
+            this.whenTransferred = whenTransferred;
         }
 
         public AsyncTcpConnection getConnection() {
@@ -47,7 +52,6 @@ public class BucketTransferrer {
                 if (cluster.size() > Cluster.REPLICATION_FACTOR) {
                     List<String> predecessors = cluster.nPreviousPredecessors(nodeId);
                     String lastPredecessor = predecessors.get(predecessors.size() - 1);
-                    System.out.println("THE LAST PREDECESSOR IS " + lastPredecessor);
 
                     List<String> keys = bucket.getMarkedKeys();
                     List<String> toDelete = keys.stream()
@@ -56,16 +60,12 @@ public class BucketTransferrer {
                                     .contains(lastPredecessor))
                             .toList();
 
-                    System.out.println(cluster
-                            .nNextSuccessors(keys.get(0).split("\\.")[0], 1));
-                    System.out.println(toDelete);
-                    System.out.println("ABOUT TO DELETE!!!");
-
                     for (String key: toDelete) {
-                        System.out.println("Dafq, should have deleted...");
-                        bucket.delete(key);
+                        bucket.destroy(key);
                     }
                 }
+
+                whenTransferred.apply(null);
 
                 return;
             }
@@ -76,7 +76,12 @@ public class BucketTransferrer {
 
         @Override
         public void failed(Throwable exc) {
-            throw new RuntimeException(exc);
+            exc.printStackTrace();
+            whenTransferred.apply(null);
+        }
+
+        public Function<Void, Void> getWhenTransferred() {
+            return whenTransferred;
         }
     }
 
@@ -96,15 +101,22 @@ public class BucketTransferrer {
 
         @Override
         public void failed(Throwable exc) {
-            throw new RuntimeException(exc);
+            exc.printStackTrace();
+            handler.getWhenTransferred().apply(null);
         }
     }
 
-    private void transferKeys(String destination, List<String> keys) {
-        if (keys.isEmpty())
+    private void transferKeys(String destination, List<String> keys, Function<Void, Void> whenTransferred) {
+        if (keys.isEmpty()) {
+            whenTransferred.apply(null);
             return;
+        }
         ListIterator<String> iterator = keys.listIterator();
-        AsyncTcpConnection.connect(executor, destination, storePort, new FetchHandler(iterator));
+        AsyncTcpConnection.connect(executor, destination, storePort, new FetchHandler(iterator, whenTransferred));
+    }
+
+    private void transferKeys(String destination, List<String> keys) {
+        transferKeys(destination, keys, (_null) -> null);
     }
 
     public void transfer(String newcomer) {
@@ -127,19 +139,39 @@ public class BucketTransferrer {
         transferKeys(newcomer, toTransfer);
     }
 
-    public void transfer() {
+    public void transfer(Function<Void, Void> whenTransferred) {
         List<String> destinations = cluster.nNextSuccessors(nodeId, Cluster.REPLICATION_FACTOR + 1);
         destinations.remove(nodeId);
         List<String> sources = cluster.nPreviousPredecessors(nodeId, Cluster.REPLICATION_FACTOR - 1);
         List<String> keys = bucket.getMarkedKeys();
+
+        int[] completed = new int[1];
+        System.out.println(destinations);
+        System.out.println(destinations.size());
         for (int i = 0; i < destinations.size(); i++) {
             int index = i;
-            transferKeys(destinations.get(i), keys);
+            System.out.println("THE FUCKING INDEX IS " + i);
+            transferKeys(destinations.get(i), keys, (_null) -> {
+                System.out.println("THE TRANSFER SHOULD HAVE BEEN COMPLETEEEED. " + completed[0]);
+                synchronized (completed) {
+                    completed[0]++;
+                    if (completed[0] == destinations.size()) {
+                        for (String key: bucket.getMarkedKeys()) {
+                            bucket.destroy(key);
+                        }
+                        whenTransferred.apply(null);
+                    }
+                }
+                return null;
+            });
             if (i == destinations.size() - 1) {
                 break;
             }
+
             keys = keys.stream()
-                    .filter(key -> key.compareTo(sources.get(sources.size() - 1 - index)) > 0)
+                    .filter(key -> !cluster
+                            .nNextSuccessors(key.split("\\.")[0], 1)
+                            .contains(sources.get(sources.size() - 1 - index)))
                     .toList();
         }
     }
