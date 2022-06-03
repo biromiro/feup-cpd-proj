@@ -53,7 +53,7 @@ public class Bucket {
     }
 
     public List<String> getMarkedKeys() {
-        return storage.list();
+        return storage.listFiles(baseFolder);
     }
 
     private String tombstoneFile(String key) {

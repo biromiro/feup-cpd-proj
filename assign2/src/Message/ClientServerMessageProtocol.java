@@ -32,7 +32,7 @@ public class ClientServerMessageProtocol {
 
     public static String transfer(String key, String value) {
         return new GenericMessageProtocol()
-                .addHeaderEntry("PUT")
+                .addHeaderEntry("TRANSFER")
                 .addHeaderEntry("key", key)
                 .setBody(value)
                 .toString();

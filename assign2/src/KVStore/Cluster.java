@@ -15,7 +15,7 @@ public class Cluster {
 
     public Cluster(List<String> members) {
         nodes = new ArrayList<>();
-        for (String node : members) {
+        for (String node: members) {
             add(node);
         }
     }
@@ -58,6 +58,9 @@ public class Cluster {
             String node = nodes.get(index).getValue();
             predecessors.add(node);
             index -= 1;
+            if (index < 0) {
+                index = nodes.size() - 1;
+            }
         }
         return predecessors;
     }

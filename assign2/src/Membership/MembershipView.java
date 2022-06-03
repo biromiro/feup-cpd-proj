@@ -47,8 +47,9 @@ public class MembershipView {
         int counter = membershipLog.log(new MembershipLogEntry(nodeId, membershipCounter));
 
         if (MembershipCounter.isJoin(counter)) {
-            if (cluster.add(nodeId))
+            if (cluster.add(nodeId) && !nodeId.equals(currentNodeID)) {
                 transferrer.transfer(nodeId);
+            }
         } else {
             cluster.remove(nodeId);
         }

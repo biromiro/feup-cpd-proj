@@ -42,8 +42,34 @@ public class BucketTransferrer {
         @Override
         public void completed(AsyncTcpConnection connection) {
             this.connection = connection;
-            if (!iterator.hasNext())
+
+            if (!iterator.hasNext()) {
+                if (cluster.size() > Cluster.REPLICATION_FACTOR) {
+                    List<String> predecessors = cluster.nPreviousPredecessors(nodeId);
+                    String lastPredecessor = predecessors.get(predecessors.size() - 1);
+                    System.out.println("THE LAST PREDECESSOR IS " + lastPredecessor);
+
+                    List<String> keys = bucket.getMarkedKeys();
+                    List<String> toDelete = keys.stream()
+                            .filter(key -> cluster
+                                    .nNextSuccessors(key.split("\\.")[0], 1)
+                                    .contains(lastPredecessor))
+                            .toList();
+
+                    System.out.println(cluster
+                            .nNextSuccessors(keys.get(0).split("\\.")[0], 1));
+                    System.out.println(toDelete);
+                    System.out.println("ABOUT TO DELETE!!!");
+
+                    for (String key: toDelete) {
+                        System.out.println("Dafq, should have deleted...");
+                        bucket.delete(key);
+                    }
+                }
+
                 return;
+            }
+
             String key = iterator.next();
             bucket.get(key, new TransferHandler(key, this));
         }
@@ -84,10 +110,20 @@ public class BucketTransferrer {
     public void transfer(String newcomer) {
         if (!cluster.nPreviousPredecessors(nodeId).contains(newcomer))
             return;
-        List<String> keys = bucket.getMarkedKeys();
-        List<String> toTransfer = keys.stream()
-                .filter(key -> key.split("\\.")[0].compareTo(newcomer) < 0)
-                .toList();
+
+        List<String> keys = bucket.getMarkedKeys(); // TODO devia ser async
+
+        List<String> toTransfer;
+        if (cluster.size() <= Cluster.REPLICATION_FACTOR) {
+            toTransfer = keys;
+        } else {
+            toTransfer = keys.stream()
+                    .filter(key -> !cluster
+                            .nNextSuccessors(key.split("\\.")[0], 1)
+                            .contains(this.nodeId))
+                    .toList();
+        }
+
         transferKeys(newcomer, toTransfer);
     }
 

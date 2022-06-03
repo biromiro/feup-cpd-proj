@@ -54,10 +54,9 @@ public class PersistentStorage {
         return Paths.get(baseFolder, this.fileName, fileName);
     }
 
-    public List<String> list() {
-        File folder = new File(baseFolder);
-        String[] fileList = folder.list();
-        return fileList == null ? List.of() : Arrays.stream(fileList).toList();
+    public List<String> listFiles(String folder) {
+        String[] fileList = getFileSync(folder).list();
+        return fileList == null ? List.of() : Arrays.asList(fileList);
     }
 
     public interface WriteHandler {
