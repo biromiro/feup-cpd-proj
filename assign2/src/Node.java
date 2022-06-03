@@ -32,11 +32,11 @@ public class Node implements MembershipService {
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(numberThreads);
 
-        PersistentStorage storage = new PersistentStorage(this.nodeId, "storage", this.executor);
+        PersistentStorage storage = new PersistentStorage(nodeId, "storage", this.executor);
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
-        this.bucket = new Bucket(new PersistentStorage("bucket", "storage/" + this.nodeId, this.executor));
+        this.bucket = new Bucket(storage);
 
         this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, this.nodeId, membershipView, executor);
     }
@@ -103,21 +103,8 @@ public class Node implements MembershipService {
             @Override
             public void completed(AsyncTcpConnection channel) {
                 // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                if (membershipCounter.isLeave()) {
-                    channel.write(ClientServerMessageProtocol.error("This node doesn't belong to a cluster."), new AsyncTcpConnection.WriteHandler() {
-                        @Override
-                        public void completed(Integer result) {
-
-                        }
-                        @Override
-                        public void failed(Throwable exc) {
-                            throw new RuntimeException(exc);
-                        }
-                    });
-                }
-                else {
-                    new KVStoreMessageHandler(nodeId, channel, bucket, membershipView).run();
-                }
+                new KVStoreMessageHandler(membershipCounter.isJoin(), nodeId, channel, bucket, membershipView)
+                        .run();
             }
 
             @Override

@@ -101,7 +101,7 @@ public class TestClient {
                     }
 
                     else if (answer instanceof ClientServerMessageProtocol.Error error) {
-                        System.out.println("Error message: " + error.getErrorMessage());
+                        System.out.println("Error: " + error.getErrorMessage());
                     }
 
                     else if (answer instanceof ClientServerMessageProtocol.Redirect) {

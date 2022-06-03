@@ -16,7 +16,15 @@ public class GenericMessageProtocol {
                 .map(line -> Arrays.asList(line.trim().split("\\s+")))
                 .collect(Collectors.toList());
 
-        body = message.substring(message.indexOf("\n\n") + 2);
+        int index = message.indexOf("\n\n") + 2;
+
+        if (index == 1) {
+            index = message.indexOf("\r\r") + 2;
+        }
+        if (index == 1) {
+            index = message.indexOf("\r\n\r\n") + 4;
+        }
+        body = message.substring(index);
     }
 
     public static List<List<String>> firstHeaderIsMessageType(List<List<String>> headers) throws MessageProtocolException {

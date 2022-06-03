@@ -11,9 +11,11 @@ public class TcpConnection implements AutoCloseable {
     private final PrintWriter writer;
     private final BufferedReader reader;
     private final Socket socket;
+    private static final int TIMEOUT = 5000;
 
     public TcpConnection(String host, int port) throws IOException {
         socket = new Socket(host, port);
+        socket.setSoTimeout(TIMEOUT);
         writer = new PrintWriter(socket.getOutputStream());
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     }

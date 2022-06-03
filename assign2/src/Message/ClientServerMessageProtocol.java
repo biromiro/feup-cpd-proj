@@ -170,13 +170,13 @@ public class ClientServerMessageProtocol {
             }
             case "DONE" -> {
                 Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
-                GenericMessageProtocol.ensureOnlyContains(fields, List.of());
+                GenericMessageProtocol.ensureOnlyContains(fields, new ArrayList<>());
 
                 return new ClientServerMessageProtocol.Done(parsedMessage.getBody());
             }
             case "ERROR" -> {
                 Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
-                GenericMessageProtocol.ensureOnlyContains(fields, List.of());
+                GenericMessageProtocol.ensureOnlyContains(fields, new ArrayList<>());
 
                 return new ClientServerMessageProtocol.Error(parsedMessage.getBody());
             }

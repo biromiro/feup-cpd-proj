@@ -12,12 +12,15 @@ import java.util.List;
 
 public class KVStoreMessageHandler {
     private static final int REPLICATION_FACTOR = 3;
+    private final boolean acceptingMessages;
     private final String localNodeId;
     private final AsyncTcpConnection worker;
     private final Bucket bucket;
     private final MembershipView membershipView;
 
-    public KVStoreMessageHandler(String localNodeId, AsyncTcpConnection worker, Bucket bucket, MembershipView membershipView) {
+    public KVStoreMessageHandler(boolean acceptingMessages, String localNodeId, AsyncTcpConnection worker,
+                                 Bucket bucket, MembershipView membershipView) {
+        this.acceptingMessages = acceptingMessages;
         this.localNodeId = localNodeId;
         this.worker = worker;
         this.bucket = bucket;
@@ -28,13 +31,34 @@ public class KVStoreMessageHandler {
         worker.read(new AsyncTcpConnection.ReadHandler() {
             @Override
             public void completed(Integer result, String message) {
-                handleMessage(message);
+                if (acceptingMessages) {
+                    handleMessage(message);
+                } else {
+                    sendError("This node doesn't belong to a cluster.");
+                }
             }
 
             @Override
             public void failed(Throwable exc) {
                 System.out.println("Failed to read from socket");
                 exc.printStackTrace();
+            }
+        });
+    }
+
+    private void sendError(String message) {
+        worker.write(ClientServerMessageProtocol.error(message), new AsyncTcpConnection.WriteHandler() {
+            @Override
+            public void completed(Integer result) {
+                try {
+                    worker.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void failed(Throwable exc) {
+                throw new RuntimeException(exc);
             }
         });
     }
@@ -88,7 +112,7 @@ public class KVStoreMessageHandler {
 
         @Override
         public void failed(Throwable exc) {
-            throw new RuntimeException("Failed to get from my bucket", exc);
+            sendError("Key not found.");
         }
     }
 

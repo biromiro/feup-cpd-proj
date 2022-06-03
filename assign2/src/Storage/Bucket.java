@@ -1,34 +1,44 @@
 package Storage;
 
+import java.io.File;
 import java.io.IOException;
 
 public class Bucket {
-    private static final String TOMBSTONE_EXT = ".DEAD";
+    private static final String baseFolder = "bucket/";
+    private static final String TOMBSTONE_EXT = ".dead";
     private final PersistentStorage storage;
 
     public Bucket(PersistentStorage storage) {
         this.storage = storage;
+        File file = this.storage.getFileSync(baseFolder);
+        if (!file.exists()) {
+            if (!file.mkdirs()) {
+                throw new RuntimeException("Could not create directory " + baseFolder + ".");
+            }
+        } else if (!file.isDirectory()) {
+            throw new RuntimeException(file + " is not a directory.");
+        }
     }
 
     public void get(String key, PersistentStorage.ReadHandler handler) {
-        storage.read(key, handler);
+        storage.read(keyFile(key), handler);
     }
 
     public void put(String key, String value, PersistentStorage.WriteHandler handler) {
         try {
-            storage.deleteIfExists(tombstone(key));
+            storage.deleteIfExists(tombstoneFile(key));
         } catch (IOException ex) {
             throw new RuntimeException("Failed to delete tombstone for key: " + key);
         }
-        storage.write(key, value, handler);
+        storage.write(keyFile(key), value, handler);
     }
 
     public void delete(String key){
-        storage.write(tombstone(key), "", new PersistentStorage.WriteHandler() {
+        storage.write(tombstoneFile(key), "", new PersistentStorage.WriteHandler() {
             @Override
             public void completed(Integer result) {
                 try {
-                    storage.deleteIfExists(key);
+                    storage.deleteIfExists(keyFile(key));
                 } catch (IOException ex) {
                     throw new RuntimeException("Failed to delete pair with key: " + key, ex);
                 }
@@ -40,7 +50,11 @@ public class Bucket {
         });
     }
 
-    private String tombstone(String key) {
-        return key + TOMBSTONE_EXT;
+    private String tombstoneFile(String key) {
+        return keyFile(key) + TOMBSTONE_EXT;
+    }
+
+    private String keyFile(String key) {
+        return baseFolder + key;
     }
 }
