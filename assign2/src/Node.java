@@ -2,7 +2,6 @@ import Connection.AsyncServer;
 import Connection.AsyncTcpConnection;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
-import Message.ClientServerMessageProtocol;
 import Storage.*;
 
 import java.io.IOException;
@@ -24,7 +23,7 @@ public class Node implements MembershipService {
     private static final int NUM_THREADS_PER_CORE = 4;
 
     public Node(String mcastAddr, int mcastPort, String nodeId, int storePort) {
-        this.nodeId = nodeId + ":" + storePort;
+        this.nodeId = nodeId;
         this.storePort = storePort;
 
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
@@ -94,7 +93,7 @@ public class Node implements MembershipService {
     public void initializeTCPLoop() {
         AsyncServer listener;
         try {
-            listener = new AsyncServer(this.storePort, executor);
+            listener = new AsyncServer(this.nodeId, this.storePort, executor);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

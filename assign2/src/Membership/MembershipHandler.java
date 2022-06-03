@@ -107,7 +107,7 @@ public class MembershipHandler {
     }
 
     public void join(int count) {
-        try (AsyncServer serverSocket = new AsyncServer(executor)) {
+        try (AsyncServer serverSocket = new AsyncServer(this.nodeId, executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.JOIN, count)) {
                 membershipView.updateMember(nodeId, count);
@@ -136,7 +136,7 @@ public class MembershipHandler {
     }
 
     public void reinitialize() {
-        try (AsyncServer serverSocket = new AsyncServer(executor)) {
+        try (AsyncServer serverSocket = new AsyncServer(this.nodeId, executor)) {
             if (clusterConnection.isClosed()) clusterConnection = new MulticastConnection(mcastAddr, mcastPort);
             if (!connectToCluster(serverSocket, clusterConnection, MembershipMessageType.REINITIALIZE, 0)) {
                 this.sendMulticastMembership(0);
