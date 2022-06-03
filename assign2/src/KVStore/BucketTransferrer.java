@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class BucketTransferrer {
     private final String nodeId;
@@ -71,6 +72,7 @@ public class BucketTransferrer {
             }
 
             String key = iterator.next();
+            System.out.println("Fetching " + key);
             bucket.get(key, new TransferHandler(key, this));
         }
 
@@ -96,6 +98,7 @@ public class BucketTransferrer {
 
         @Override
         public void completed(Integer len, String message) {
+            System.out.println("TRANSFERRIGN " + key);
             handler.getConnection().write(ClientServerMessageProtocol.transfer(key, message), handler);
         }
 
@@ -109,6 +112,7 @@ public class BucketTransferrer {
     private void transferKeys(String destination, List<String> keys, Function<Void, Void> whenTransferred) {
         if (keys.isEmpty()) {
             whenTransferred.apply(null);
+            System.out.println("TRANSFER ERROR");
             return;
         }
         ListIterator<String> iterator = keys.listIterator();
@@ -123,7 +127,7 @@ public class BucketTransferrer {
         if (!cluster.nPreviousPredecessors(nodeId).contains(newcomer))
             return;
 
-        List<String> keys = bucket.getMarkedKeys(); // TODO devia ser async
+        List<String> keys = bucket.getMarkedKeys();
 
         List<String> toTransfer;
         if (cluster.size() <= Cluster.REPLICATION_FACTOR) {
@@ -150,9 +154,8 @@ public class BucketTransferrer {
         System.out.println(destinations.size());
         for (int i = 0; i < destinations.size(); i++) {
             int index = i;
-            System.out.println("THE FUCKING INDEX IS " + i);
             transferKeys(destinations.get(i), keys, (_null) -> {
-                System.out.println("THE TRANSFER SHOULD HAVE BEEN COMPLETEEEED. " + completed[0]);
+                System.out.println("ONE TRANSFER COMPLETED");
                 synchronized (completed) {
                     completed[0]++;
                     if (completed[0] == destinations.size()) {
@@ -174,5 +177,21 @@ public class BucketTransferrer {
                             .contains(sources.get(sources.size() - 1 - index)))
                     .toList();
         }
+    }
+
+    public void reinitialize(String nodeId) {
+        List<String> successors = cluster.nNextSuccessors(nodeId);
+        List<String> predecessors = cluster.nPreviousPredecessors(nodeId, Cluster.REPLICATION_FACTOR - 1);
+
+        if (!successors.contains(this.nodeId) && !predecessors.contains(this.nodeId)) {
+            return;
+        }
+
+        List<String> keys = bucket.getMarkedKeys()
+                .stream()
+                .filter(key -> cluster.nNextSuccessors(key).contains(nodeId))
+                .collect(Collectors.toList());
+
+        transferKeys(nodeId, keys);
     }
 }

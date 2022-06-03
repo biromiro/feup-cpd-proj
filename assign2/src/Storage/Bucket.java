@@ -3,7 +3,6 @@ package Storage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Bucket {
     private static final String baseFolder = "bucket/";

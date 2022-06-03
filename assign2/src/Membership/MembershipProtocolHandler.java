@@ -61,7 +61,6 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void determineIfShouldSendMembershipView(String host, int port, Map<String, Integer> blacklist) {
-        if (Objects.equals(blacklist.get(membershipView.getNodeId()), membershipView.getCount())) return;
         if (membershipView.isMulticasting()) {
             sendMembershipView(host, port);
         } else {
@@ -76,6 +75,8 @@ public class MembershipProtocolHandler implements Runnable {
     private void handleJoin(MembershipMessageProtocol.Join joinMessage) {
         membershipView.updateMember(joinMessage.getId(), joinMessage.getMembershipCounter());
 
+        if (Objects.equals(joinMessage.getBlacklist()
+                .get(membershipView.getNodeId()), membershipView.getCount())) return;
         this.determineIfShouldSendMembershipView(joinMessage.getId(), joinMessage.getPort(), joinMessage.getBlacklist());
     }
 
@@ -97,7 +98,11 @@ public class MembershipProtocolHandler implements Runnable {
     }
 
     private void handleReinitialize(MembershipMessageProtocol.Reinitialize reinitializeMessage) {
-        // TODO maybe should send the membership counter as well on reinitialize message?
+        if (Objects.equals(reinitializeMessage.getBlacklist()
+                .get(membershipView.getNodeId()), membershipView.getCount())) return;
+
+        membershipView.reinitialize(reinitializeMessage.getId());
+
         this.determineIfShouldSendMembershipView(
                 reinitializeMessage.getId(),
                 reinitializeMessage.getPort(),

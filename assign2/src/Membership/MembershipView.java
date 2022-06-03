@@ -115,4 +115,10 @@ public class MembershipView {
     public Integer getCount() {
         return membershipLog.get().stream().map(MembershipLogEntry::membershipCounter).reduce(0, Integer::sum);
     }
+
+    public void reinitialize(String nodeId) {
+        if (!nodeId.equals(currentNodeID)) {
+            this.transferrer.reinitialize(nodeId);
+        }
+    }
 }
