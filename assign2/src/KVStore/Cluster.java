@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Cluster {
+    public static final int REPLICATION_FACTOR = 3;
     private final List<KVEntry> nodes;
 
     public Cluster() {
@@ -23,13 +24,14 @@ public class Cluster {
         return -failedIndex - 1;
     }
 
-    public void add(String node) {
+    public boolean add(String node) {
         KVEntry entry = new KVEntry(node);
         int index = Collections.binarySearch(nodes, entry);
         if (index >= 0) {
-            return;
+            return false;
         }
         nodes.add(insertionPoint(index), entry);
+        return true;
     }
 
     public void remove(String node) {
@@ -40,13 +42,36 @@ public class Cluster {
         nodes.remove(index);
     }
 
-    public String predecessor(String key) {
+    public List<String> nPreviousPredecessors(String key) {
+        return nPreviousPredecessors(key, REPLICATION_FACTOR);
+    }
+    public List<String> nPreviousPredecessors(String key, int n) {
+        if (n <= 0) {
+            return new ArrayList<>();
+        }
+        if (n > nodes.size()) {
+            return getMembers();
+        }
+        List<String> predecessors = new ArrayList<>();
+        int index = predecessorIndex(key);
+        for (int i = 0; i < n; i++) {
+            String node = nodes.get(index).getValue();
+            predecessors.add(node);
+            index -= 1;
+        }
+        return predecessors;
+    }
+
+    private int predecessorIndex(String key) {
         int index = Collections.binarySearch(nodes, new KVEntry(key));
         if (index < 0) {
             index = insertionPoint(index);
         }
-        index = (index - 1) % nodes.size();
-        return nodes.get(index).getValue();
+        index -= 1;
+        if (index < 0) {
+            index = nodes.size() - 1;
+        }
+        return index;
     }
 
     private int successorIndex(String key) {
@@ -57,17 +82,15 @@ public class Cluster {
         return index;
     }
 
-    public String successor(String key) {
-        int index = successorIndex(key);
-        return nodes.get(index).getValue();
+    public List<String> nNextSuccessors(String key) {
+        return nNextSuccessors(key, REPLICATION_FACTOR);
     }
-
     public List<String> nNextSuccessors(String key, int n) {
         if (n <= 0) {
             return new ArrayList<>();
         }
         if (n > nodes.size()) {
-            n = nodes.size();
+            return getMembers();
         }
         List<String> successors = new ArrayList<>();
         int index = successorIndex(key);

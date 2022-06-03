@@ -3,6 +3,7 @@ package Message;
 import KVStore.KVEntry;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,14 @@ public class ClientServerMessageProtocol {
                 .addHeaderEntry("PUT")
                 .addHeaderEntry("key", entry.getKey())
                 .setBody(entry.getValue())
+                .toString();
+    }
+
+    public static String transfer(String key, String value) {
+        return new GenericMessageProtocol()
+                .addHeaderEntry("PUT")
+                .addHeaderEntry("key", key)
+                .setBody(value)
                 .toString();
     }
 
@@ -96,6 +105,24 @@ public class ClientServerMessageProtocol {
         }
     }
 
+    public static class Transfer extends ClientServerMessageProtocol {
+        private final String key;
+        private final String value;
+
+        public Transfer(String key, String value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
     public static class Redirect extends ClientServerMessageProtocol {
         private final List<String> hosts;
 
@@ -160,6 +187,12 @@ public class ClientServerMessageProtocol {
 
                 return new ClientServerMessageProtocol.Redirect(targets);
             }
+            case "TRANSFER" -> {
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of("key"));
+
+                return new ClientServerMessageProtocol.Transfer(fields.get("key"), parsedMessage.getBody());
+            }
             case "DONE" -> {
                 Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
                 GenericMessageProtocol.ensureOnlyContains(fields, new ArrayList<>());
@@ -188,4 +221,5 @@ public class ClientServerMessageProtocol {
         }
         return targets;
     }
+
 }
