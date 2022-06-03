@@ -105,7 +105,7 @@ public class PersistentStorage {
                     handler.completed(result, sb.toString());
                 } else {
                     pos += result;
-                    sb.append(new String(buffer.array(), buffer.arrayOffset(), buffer.array().length));
+                    sb.append(new String(buffer.array(), buffer.arrayOffset(), result));
 
                     buffer.clear();
                     file.read(buffer, pos , null, this);

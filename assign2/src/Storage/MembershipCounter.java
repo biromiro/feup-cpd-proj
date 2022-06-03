@@ -39,5 +39,5 @@ public class MembershipCounter {
     }
 
     public static boolean isJoin(int count) { return count % 2 == 0; }
-    public static boolean isLeave(int count) { return count % 2 == 1; }
+    public static boolean isLeave(int count) { return !isJoin(count); }
 }

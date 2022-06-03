@@ -3,7 +3,6 @@ package KVStore;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Cluster {
@@ -50,12 +49,34 @@ public class Cluster {
         return nodes.get(index).getValue();
     }
 
-    public String successor(String key) {
+    private int successorIndex(String key) {
         int index = Collections.binarySearch(nodes, new KVEntry(key));
         if (index < 0) {
             index = insertionPoint(index) % nodes.size();
         }
+        return index;
+    }
+
+    public String successor(String key) {
+        int index = successorIndex(key);
         return nodes.get(index).getValue();
+    }
+
+    public List<String> nNextSuccessors(String key, int n) {
+        if (n <= 0) {
+            return new ArrayList<>();
+        }
+        if (n > nodes.size()) {
+            n = nodes.size();
+        }
+        List<String> successors = new ArrayList<>();
+        int index = successorIndex(key);
+        for (int i = 0; i < n; i++) {
+            String node = nodes.get(index).getValue();
+            successors.add(node);
+            index = (index + 1) % nodes.size();
+        }
+        return successors;
     }
 
     public List<String> getMembers() {

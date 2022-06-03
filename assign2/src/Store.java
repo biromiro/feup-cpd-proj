@@ -1,5 +1,3 @@
-import Storage.PersistentStorage;
-
 public class Store {
     private static void printUsage() {
         System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id>  <Store_port>");

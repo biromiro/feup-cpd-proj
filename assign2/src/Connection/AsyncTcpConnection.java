@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class AsyncTcpConnection implements AutoCloseable {
@@ -63,7 +62,7 @@ public class AsyncTcpConnection implements AutoCloseable {
         socket.read(buffer, null, new CompletionHandler<Integer, Void>() {
             @Override
             public void completed(Integer result, Void attachment) {
-                String receivedMessage = new String(buffer.array(), buffer.arrayOffset(), buffer.array().length);
+                String receivedMessage = new String(buffer.array(), buffer.arrayOffset(), result);
                 handler.completed(result, receivedMessage);
             }
 

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
+import java.util.stream.Collectors;
 
 public class TcpConnection implements AutoCloseable {
     private final PrintWriter writer;
@@ -17,18 +18,21 @@ public class TcpConnection implements AutoCloseable {
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     }
 
+    public String getHost() {
+        return socket.getInetAddress().getHostAddress();
+    }
+
+    public int getPort() {
+        return socket.getPort();
+    }
+
     public void send(String message) {
         writer.print(message);
         writer.flush();
     }
 
-    public String read() throws IOException {
-        String line;
-        StringBuilder content = new StringBuilder();
-        while ((line = reader.readLine()) != null) {
-            content.append(line);
-        }
-        return content.toString();
+    public String read() {
+        return reader.lines().collect(Collectors.joining(System.lineSeparator()));
     }
 
     @Override

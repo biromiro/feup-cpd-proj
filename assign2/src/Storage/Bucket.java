@@ -20,7 +20,6 @@ public class Bucket {
         } catch (IOException ex) {
             throw new RuntimeException("Failed to delete tombstone for key: " + key);
         }
-
         storage.write(key, value, handler);
     }
 

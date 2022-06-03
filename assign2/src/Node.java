@@ -1,8 +1,8 @@
 import Connection.AsyncServer;
 import Connection.AsyncTcpConnection;
-import Storage.Bucket;
 import KVStore.KVStoreMessageHandler;
 import Membership.*;
+import Message.ClientServerMessageProtocol;
 import Storage.*;
 
 import java.io.IOException;
@@ -24,7 +24,7 @@ public class Node implements MembershipService {
     private static final int NUM_THREADS_PER_CORE = 4;
 
     public Node(String mcastAddr, int mcastPort, String nodeId, int storePort) {
-        this.nodeId = nodeId;
+        this.nodeId = nodeId + ":" + storePort;
         this.storePort = storePort;
 
         // TODO how to choose the number of threads? max(processors, 32) or processors*4 or something else?
@@ -32,13 +32,13 @@ public class Node implements MembershipService {
         System.out.println("There are " + numberThreads + " threads in the pool.");
         this.executor = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(numberThreads);
 
-        PersistentStorage storage = new PersistentStorage(nodeId, "storage", this.executor);
+        PersistentStorage storage = new PersistentStorage(this.nodeId, "storage", this.executor);
         this.membershipCounter = new MembershipCounter(storage);
         MembershipLog membershipLog = new MembershipLog(storage);
         this.membershipView = new MembershipView(membershipLog, this.nodeId);
-        this.bucket = new Bucket(new PersistentStorage("bucket", "storage/" + nodeId, this.executor));
+        this.bucket = new Bucket(new PersistentStorage("bucket", "storage/" + this.nodeId, this.executor));
 
-        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, nodeId, membershipView, executor);
+        this.membershipHandler = new MembershipHandler(mcastAddr, mcastPort, this.nodeId, membershipView, executor);
     }
 
     private void incrementCounter() {
@@ -103,7 +103,21 @@ public class Node implements MembershipService {
             @Override
             public void completed(AsyncTcpConnection channel) {
                 // TODO  receive in tcp loop the message from cluster leader becoming its predecessor
-                new KVStoreMessageHandler(nodeId, channel, bucket, membershipView).run();
+                if (membershipCounter.isLeave()) {
+                    channel.write(ClientServerMessageProtocol.error("This node doesn't belong to a cluster."), new AsyncTcpConnection.WriteHandler() {
+                        @Override
+                        public void completed(Integer result) {
+
+                        }
+                        @Override
+                        public void failed(Throwable exc) {
+                            throw new RuntimeException(exc);
+                        }
+                    });
+                }
+                else {
+                    new KVStoreMessageHandler(nodeId, channel, bucket, membershipView).run();
+                }
             }
 
             @Override
