@@ -134,7 +134,7 @@ public class ClientServerMessageProtocol {
         GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
         List<List<String>> headers = GenericMessageProtocol.firstHeaderIsMessageType(parsedMessage.getHeaders());
 
-        switch (parsedMessage.getHeaders().get(0).get(0)) {
+        switch (parsedMessage.getHeaders().get(0).get(1)) {
             case "GET" -> {
                 Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
                 GenericMessageProtocol.ensureOnlyContains(fields, List.of("key"));

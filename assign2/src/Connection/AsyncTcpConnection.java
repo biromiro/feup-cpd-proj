@@ -9,7 +9,7 @@ import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class AsyncTcpConnection implements AutoCloseable {
-    private static final int RECEIVE_BUFFER_SIZE = 2048;
+    private static final int RECEIVE_BUFFER_SIZE = 4096;
     private final AsynchronousSocketChannel socket;
 
     public AsyncTcpConnection(AsynchronousSocketChannel socket) {
@@ -63,7 +63,27 @@ public class AsyncTcpConnection implements AutoCloseable {
             @Override
             public void completed(Integer result, Void attachment) {
                 String receivedMessage = new String(buffer.array(), buffer.arrayOffset(), result);
-                handler.completed(result, receivedMessage);
+
+                String msg_len_str = receivedMessage.split(" ")[0];
+                int message_length = msg_len_str.length() + 1 + Integer.parseInt(msg_len_str);
+                ByteBuffer buffer = ByteBuffer.allocate(message_length);
+
+                if (message_length <= RECEIVE_BUFFER_SIZE) {
+                    handler.completed(result, receivedMessage);
+                } else {
+                    socket.read(buffer, null, new CompletionHandler<Integer, Void>() {
+                        @Override
+                        public void completed(Integer result, Void attachment) {
+                            String message = new String(buffer.array(), buffer.arrayOffset(), result);
+                            handler.completed(result, receivedMessage + message);
+                        }
+
+                        @Override
+                        public void failed(Throwable exc, Void attachment) {
+                            handler.failed(exc);
+                        }
+                    });
+                }
             }
 
             @Override

@@ -31,9 +31,9 @@ public class GenericMessageProtocol {
         if (headers.size() == 0) {
             throw new MessageProtocolException("Message is missing headers");
         }
-        if (headers.get(0).size() != 1) {
+        if (headers.get(0).size() != 2) {
             throw new MessageProtocolException("Unknown message '"
-                    + String.join(" ", headers.get(0)) + '\'');
+                    + String.join(" ", headers.get(1)) + '\'');
         }
 
         System.out.println("HEADERS: " + headers);
@@ -58,6 +58,7 @@ public class GenericMessageProtocol {
 
     public String toString() {
         StringBuilder builder = new StringBuilder();
+
         for (List<String> headerEntry : header) {
             builder.append(String.join(" ", headerEntry));
             builder.append("\n");
@@ -65,7 +66,8 @@ public class GenericMessageProtocol {
         builder.append("\n");
         builder.append(body);
 
-        return builder.toString();
+        String message = builder.toString();
+        return message.length() + " " + message;
     }
 
     public List<List<String>> getHeaders() {

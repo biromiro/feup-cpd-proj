@@ -14,7 +14,6 @@ public class AsyncServer implements AutoCloseable {
     private final AsynchronousServerSocketChannel socket;
 
     public AsyncServer(InetSocketAddress address, ScheduledThreadPoolExecutor executor) throws IOException {
-        System.out.println("Creating server on " + address);
         this.socket = AsynchronousServerSocketChannel
                 .open(AsynchronousChannelGroup.withThreadPool(executor))
                 .bind(address);

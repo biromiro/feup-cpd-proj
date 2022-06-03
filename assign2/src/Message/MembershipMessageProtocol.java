@@ -211,7 +211,7 @@ public class MembershipMessageProtocol {
         GenericMessageProtocol parsedMessage = new GenericMessageProtocol(message);
         List<List<String>> headers = GenericMessageProtocol.firstHeaderIsMessageType(parsedMessage.getHeaders());
 
-        switch (parsedMessage.getHeaders().get(0).get(0)) {
+        switch (parsedMessage.getHeaders().get(0).get(1)) {
             case "JOIN" -> {
                 List<List<String>> blacklistHeaders = headers.stream()
                         .filter(header -> header.get(0).equals("blacklist")).toList();
