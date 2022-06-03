@@ -54,10 +54,14 @@ public class TestClient {
         }
         KVEntry entry = new KVEntry(content);
         actOnEndpoint(ip, port, ClientServerMessageProtocol.put(entry));
+
+        System.out.println("Put " + filepath + " at key " + entry.getKey());
     }
 
     private static void delete(String ip, int port, String key) {
         actOnEndpoint(ip, port, ClientServerMessageProtocol.delete(key));
+
+        System.out.println("Deleted key " + key);
     }
 
     private static void get(String ip, int port, String key) {
@@ -70,6 +74,7 @@ public class TestClient {
     private static void actOnEndpoint(String ip, int port, String request) {
         actOnEndpoint(ip, port, request, (message) -> null);
     }
+
     private static void actOnEndpoint(String ip, int port, String request, Function<ClientServerMessageProtocol.Done, Void> onDone) {
         List<String> visited = new ArrayList<>();
         Queue<String> toVisit = new ArrayDeque<>();
@@ -102,7 +107,7 @@ public class TestClient {
                 System.out.println("Error: " + error.getErrorMessage());
             } else if (answer instanceof ClientServerMessageProtocol.Redirect redirect) {
                 for (String target: redirect.getHosts()) {
-                    if (!visited.contains(target)) {
+                    if (!visited.contains(target) && !toVisit.contains(target)) {
                         toVisit.add(target);
                     }
                 }

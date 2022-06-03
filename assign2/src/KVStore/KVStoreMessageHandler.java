@@ -46,21 +46,31 @@ public class KVStoreMessageHandler {
         });
     }
 
+    private class CloseHandler implements AsyncTcpConnection.WriteHandler {
+        private final String errorMessage;
+
+        public CloseHandler(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+
+        @Override
+        public void completed(Integer result) {
+            try {
+                worker.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to close connection", e);
+            }
+        }
+
+        @Override
+        public void failed(Throwable exc) {
+            throw new RuntimeException(errorMessage, exc);
+        }
+    }
+
     private void sendError(String message) {
-        worker.write(ClientServerMessageProtocol.error(message), new AsyncTcpConnection.WriteHandler() {
-            @Override
-            public void completed(Integer result) {
-                try {
-                    worker.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            @Override
-            public void failed(Throwable exc) {
-                throw new RuntimeException(exc);
-            }
-        });
+        worker.write(ClientServerMessageProtocol.error(message),
+                new CloseHandler("Error during error response."));
     }
 
     private void handleMessage(String message) {
@@ -84,96 +94,54 @@ public class KVStoreMessageHandler {
         }
     }
 
+    private void redirectSkipSelf(Cluster cluster, String key) {
+        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
+        successors.remove(localNodeId);
+        redirect(successors);
+    }
+
     private void redirect(List<String> targets) {
-        System.out.println("ALMOST...");
-        worker.write(ClientServerMessageProtocol.redirect(targets), new AsyncTcpConnection.WriteHandler() {
-            @Override
-            public void completed(Integer result) {
-                try {
-                    worker.close();
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to close connection", e);
-                }
-            }
-
-            @Override
-            public void failed(Throwable exc) {
-                throw new RuntimeException("Failed to write redirect message", exc);
-            }
-        });
-    }
-
-    private class LocalGetHandler implements PersistentStorage.ReadHandler {
-
-        @Override
-        public void completed(Integer len, String message) {
-            worker.write(ClientServerMessageProtocol.done(message), new ReturnGetHandler());
-        }
-
-        @Override
-        public void failed(Throwable exc) {
-            sendError("Key not found.");
-        }
-    }
-
-    private class ReturnGetHandler implements AsyncTcpConnection.WriteHandler {
-        @Override
-        public void completed(Integer result) {
-            try {
-                worker.close();
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to close connection");
-            }
-        }
-
-        @Override
-        public void failed(Throwable exc) {
-            throw new RuntimeException("Failed to give the value to requester.", exc);
-        }
+        worker.write(ClientServerMessageProtocol.redirect(targets),
+                new CloseHandler("Failed to write redirect message"));
     }
 
     private void handleGet(String key) {
         Cluster cluster = membershipView.getCluster();
         List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
-        // If node has key, get it and send it back
-        System.out.println("HANDLING GET");
+
         if (successors.contains(localNodeId)) {
-            bucket.get(key, new LocalGetHandler());
+            bucket.get(key, new PersistentStorage.ReadHandler() {
+                @Override
+                public void completed(Integer len, String message) {
+                    worker.write(ClientServerMessageProtocol.done(message),
+                            new CloseHandler("Failed to give the value to requester."));
+                }
+
+                @Override
+                public void failed(Throwable exc) {
+                    sendError("Key not found.");
+                }
+            });
         } else {
-            System.out.println("REDIRECTING");
             redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
-    }
-
-    private class LocalPutHandler implements PersistentStorage.WriteHandler {
-
-        @Override
-        public void completed(Integer result) {
-            try {
-                worker.close();
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to close connection", e);
-            }
-        }
-
-        @Override
-        public void failed(Throwable exc) {
-            throw new RuntimeException("Failed to put on my bucket", exc);
-        }
-    }
-
-    private void redirectToReplicators(Cluster cluster, String key) {
-        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
-        successors.remove(localNodeId);
-        redirect(successors);
     }
 
     private void handlePut(String key, String value) {
         Cluster cluster = membershipView.getCluster();
         List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
         if (successors.contains(localNodeId)) {
-            bucket.put(key, value, new LocalPutHandler());
-            redirectToReplicators(cluster, key);
+            bucket.put(key, value, new PersistentStorage.WriteHandler() {
+                @Override
+                public void completed(Integer result) {
+                    redirectSkipSelf(cluster, key);
+                }
+
+                @Override
+                public void failed(Throwable exc) {
+                    throw new RuntimeException("Failed to write to bucket", exc);
+                }
+            });
         } else {
             redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
@@ -184,10 +152,9 @@ public class KVStoreMessageHandler {
         List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
         if (successors.contains(localNodeId)) {
             bucket.delete(key);
-            redirectToReplicators(cluster, key);
+            redirectSkipSelf(cluster, key);
         } else {
             redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
     }
-
 }
