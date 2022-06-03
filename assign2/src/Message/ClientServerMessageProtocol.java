@@ -29,15 +29,35 @@ public class ClientServerMessageProtocol {
                 .toString();
     }
 
-    public static String redirect(String node) {
+    public static String redirect(List<String> targets) {
+        GenericMessageProtocol message = new GenericMessageProtocol().addHeaderEntry("REDIRECT");
+        for (String target : targets) {
+            message.addHeaderEntry("redirect", target);
+        }
+        return message.toString();
+    }
+
+    public static String done() {
         return new GenericMessageProtocol()
-                .addHeaderEntry("REDIRECT")
-                .addHeaderEntry("node", node)
+                .addHeaderEntry("DONE")
+                .toString();
+    }
+    public static String done(String content) {
+        return new GenericMessageProtocol()
+                .addHeaderEntry("DONE")
+                .setBody(content)
+                .toString();
+    }
+
+    public static String error(String errorMessage) {
+        return new GenericMessageProtocol()
+                .addHeaderEntry("ERROR")
+                .setBody(errorMessage)
                 .toString();
     }
 
     public static class Get extends ClientServerMessageProtocol {
-        private String key;
+        private final String key;
         public Get(String key) {
             this.key = key;
         }
@@ -48,7 +68,7 @@ public class ClientServerMessageProtocol {
     }
 
     public static class Delete extends ClientServerMessageProtocol {
-        private String key;
+        private final String key;
         public Delete(String key) {
             this.key = key;
         }
@@ -59,8 +79,8 @@ public class ClientServerMessageProtocol {
     }
 
     public static class Put extends ClientServerMessageProtocol {
-        private String key;
-        private String value;
+        private final String key;
+        private final String value;
         public Put(String key, String value) {
             this.key = key;
             this.value = value;
@@ -76,13 +96,45 @@ public class ClientServerMessageProtocol {
     }
 
     public static class Redirect extends ClientServerMessageProtocol {
-        private String node;
-        public Redirect(String node) {
-            this.node = node;
+        private final List<String> hosts;
+        private final List<Integer> ports;
+        public Redirect(List<String> targets) {
+            hosts = new ArrayList<>();
+            ports = new ArrayList<>();
+            for (String target : targets) {
+                String[] params = target.split(":", 2);
+                hosts.add(params[0]);
+                ports.add(Integer.parseInt(params[1]));
+            }
+        }
+        public List<String> getHosts() {
+            return hosts;
+        }
+        public List<Integer> getPorts() {
+            return ports;
+        }
+    }
+
+    public static class Done extends ClientServerMessageProtocol {
+        private final String body;
+        public Done(String body) {
+            this.body = body;
         }
 
-        public String getNode() {
-            return this.node;
+        public String getBody() {
+            return body;
+        }
+    }
+
+    public static class Error extends ClientServerMessageProtocol {
+        private final String errorMessage;
+
+        public Error(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
         }
     }
 
@@ -110,13 +162,38 @@ public class ClientServerMessageProtocol {
                 return new ClientServerMessageProtocol.Put(fields.get("key"), parsedMessage.getBody());
             }
             case "REDIRECT" -> {
-                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
-                GenericMessageProtocol.ensureOnlyContains(fields, List.of("node"));
+                List<List<String>> fields = headers.stream()
+                        .filter(header -> header.get(0).equals("redirect")).toList();
+                List<String> targets = parseRedirectHeaders(fields);
 
-                return new ClientServerMessageProtocol.Redirect(fields.get("node"));
+                return new ClientServerMessageProtocol.Redirect(targets);
+            }
+            case "DONE" -> {
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of());
+
+                return new ClientServerMessageProtocol.Done(parsedMessage.getBody());
+            }
+            case "ERROR" -> {
+                Map<String, String> fields = GenericMessageProtocol.parseBinaryHeaders(headers);
+                GenericMessageProtocol.ensureOnlyContains(fields, List.of());
+
+                return new ClientServerMessageProtocol.Error(parsedMessage.getBody());
             }
             default -> throw new MessageProtocolException("Unknown message '"
                     + String.join(" ", parsedMessage.getHeaders().get(0)) + '\'');
         }
+    }
+
+    private static List<String> parseRedirectHeaders(List<List<String>> redirectHeaders) throws MessageProtocolException {
+        List<String> targets = new ArrayList<>();
+        for (List<String> header : redirectHeaders) {
+            if (header.size() != 2) {
+                throw new MessageProtocolException("Unexpected redirect header '" + header + '\'');
+            }
+            String target = header.get(1);
+            targets.add(target);
+        }
+        return targets;
     }
 }

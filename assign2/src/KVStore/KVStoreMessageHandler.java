@@ -7,7 +7,11 @@ import Message.MessageProtocolException;
 import Storage.Bucket;
 import Storage.PersistentStorage;
 
+import java.io.IOException;
+import java.util.List;
+
 public class KVStoreMessageHandler {
+    private static final int REPLICATION_FACTOR = 3;
     private final String localNodeId;
     private final AsyncTcpConnection worker;
     private final Bucket bucket;
@@ -56,15 +60,21 @@ public class KVStoreMessageHandler {
         }
     }
 
-    private void redirect(String successor) {
-        worker.write(ClientServerMessageProtocol.redirect(successor), new AsyncTcpConnection.WriteHandler() {
+    private void redirect(List<String> targets) {
+
+        worker.write(ClientServerMessageProtocol.redirect(targets), new AsyncTcpConnection.WriteHandler() {
             @Override
             public void completed(Integer result) {
+                try {
+                    worker.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to close connection", e);
+                }
             }
 
             @Override
             public void failed(Throwable exc) {
-
+                throw new RuntimeException("Failed to write redirect message", exc);
             }
         });
     }
@@ -73,7 +83,7 @@ public class KVStoreMessageHandler {
 
         @Override
         public void completed(Integer len, String message) {
-            worker.write(message, new ReturnGetHandler());
+            worker.write(ClientServerMessageProtocol.done(message), new ReturnGetHandler());
         }
 
         @Override
@@ -85,7 +95,11 @@ public class KVStoreMessageHandler {
     private class ReturnGetHandler implements AsyncTcpConnection.WriteHandler {
         @Override
         public void completed(Integer result) {
-
+            try {
+                worker.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to close connection");
+            }
         }
 
         @Override
@@ -96,12 +110,12 @@ public class KVStoreMessageHandler {
 
     private void handleGet(String key) {
         Cluster cluster = membershipView.getCluster();
-        String successor = cluster.successor(key);
+        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
         // If node has key, get it and send it back
-        if (successor.equals(localNodeId)) {
+        if (successors.contains(localNodeId)) {
             bucket.get(key, new LocalGetHandler());
         } else {
-            redirect(successor);
+            redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
     }
 
@@ -109,7 +123,11 @@ public class KVStoreMessageHandler {
 
         @Override
         public void completed(Integer result) {
-
+            try {
+                worker.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to close connection", e);
+            }
         }
 
         @Override
@@ -118,23 +136,31 @@ public class KVStoreMessageHandler {
         }
     }
 
+    private void redirectToReplicators(Cluster cluster, String key) {
+        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
+        successors.remove(localNodeId);
+        redirect(successors);
+    }
+
     private void handlePut(String key, String value) {
         Cluster cluster = membershipView.getCluster();
-        String successor = cluster.successor(key);
-        if (successor.equals(localNodeId)) {
+        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
+        if (successors.contains(localNodeId)) {
             bucket.put(key, value, new LocalPutHandler());
+            redirectToReplicators(cluster, key);
         } else {
-            redirect(successor);
+            redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
     }
 
     private void handleDelete(String key) {
         Cluster cluster = membershipView.getCluster();
-        String successor = cluster.successor(key);
-        if (successor.equals(localNodeId)) {
+        List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
+        if (successors.contains(localNodeId)) {
             bucket.delete(key);
+            redirectToReplicators(cluster, key);
         } else {
-            redirect(successor);
+            redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
     }
 

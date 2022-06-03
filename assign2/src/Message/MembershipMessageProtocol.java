@@ -182,8 +182,7 @@ public class MembershipMessageProtocol {
         List<String> logList = body
                 .lines()
                 .skip(membersCount + 1)
-                .limit(logCount)
-                .collect(Collectors.toList());
+                .limit(logCount).toList();
         List<MembershipLogEntry> log = new ArrayList<>();
         for (String line: logList) {
             if (line.isEmpty()) {

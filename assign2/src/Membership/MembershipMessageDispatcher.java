@@ -10,7 +10,7 @@ public class MembershipMessageDispatcher implements Runnable{
     private final int port;
     private final ThreadPoolExecutor executor;
     private final MembershipView membershipView;
-    private String host;
+    private final String host;
 
     MembershipMessageDispatcher(ThreadPoolExecutor executor, MembershipView membershipView, String host, int port) {
         this.executor = executor;

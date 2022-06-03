@@ -2,17 +2,17 @@ import Connection.TcpConnection;
 import KVStore.KVEntry;
 import Membership.MembershipService;
 import Message.ClientServerMessageProtocol;
+import Message.MessageProtocolException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
+import java.util.function.Function;
 
 public class TestClient {
     private static final List<String> MEMBERSHIP_OPERATIONS = Arrays.asList("join", "leave");
@@ -38,41 +38,93 @@ public class TestClient {
     }
 
     private static void keyValueOperation(String ip, int port, String operation, String operand) {
-        try (TcpConnection connection = new TcpConnection(ip, port)) {
-            switch (operation) {
-                case "put" -> put(connection, operand);
-                case "get" -> get(connection, operand);
-                case "delete" -> delete(connection, operand);
-            }
+        switch (operation) {
+            case "put" -> put(ip, port, operand);
+            case "delete" -> delete(ip, port, operand);
+            case "get" -> get(ip, port, operand);
+        }
+    }
+
+    private static void put(String ip, int port, String filepath) {
+        String content;
+        try {
+            content = Files.readString(Paths.get(filepath));
         } catch (IOException e) {
-            System.out.println("Faulty connection to node at ip address " + ip + ":" + port);
+            throw new RuntimeException(e);
         }
+        KVEntry entry = new KVEntry(content);
+        actOnEndpoint(ip, port, ClientServerMessageProtocol.put(entry));
     }
 
-    private static void put(TcpConnection connection, String filepath) {
-        File file = new File(filepath);
-        StringBuilder data = new StringBuilder();
-        try (Scanner scanner = new Scanner(file)){
-            while (scanner.hasNextLine()) {
-                data.append(scanner.nextLine());
+    private static void delete(String ip, int port, String key) {
+        actOnEndpoint(ip, port, ClientServerMessageProtocol.delete(key));
+    }
+
+    private static void get(String ip, int port, String key) {
+        actOnEndpoint(ip, port, ClientServerMessageProtocol.get(key), (message) -> {
+            System.out.println(message.getBody());
+            return null;
+        });
+    }
+
+    private static void actOnEndpoint(String ip, int port, String request) {
+        actOnEndpoint(ip, port, request, (message) -> null);
+    }
+    private static void actOnEndpoint(String ip, int port, String request, Function<ClientServerMessageProtocol.Done, Void> onDone) {
+        List<String> visited = new ArrayList<>();
+        Queue<String> toVisit = new ArrayDeque<>();
+        toVisit.add(ip + ":" + port);
+        while (!toVisit.isEmpty()) {
+            String visiting = toVisit.remove();
+            System.out.println("start " + visiting);
+            visited.add(visiting);
+            String[] params = visiting.split(":");
+            ip = params[0];
+            port = Integer.parseInt(params[1]);
+
+            try (TcpConnection connection = new TcpConnection(ip, port)) {
+                //Ask for entry
+                connection.send(request);
+
+                // Hear response
+                String value;
+                value = connection.read();
+
+                // Process it
+                try {
+                    ClientServerMessageProtocol answer = ClientServerMessageProtocol.parse(value);
+
+                    if (answer instanceof ClientServerMessageProtocol.Done doneMessage) {
+                        //No redirection. At the endpoint node.
+                        onDone.apply(doneMessage);
+                        break;
+                    }
+
+                    else if (answer instanceof ClientServerMessageProtocol.Error error) {
+                        System.out.println("Error message: " + error.getErrorMessage());
+                    }
+
+                    else if (answer instanceof ClientServerMessageProtocol.Redirect) {
+                        //Not at endpoint node. Reach them instead.
+                        List<String> hosts = ((ClientServerMessageProtocol.Redirect) answer).getHosts();
+                        List<Integer> ports = ((ClientServerMessageProtocol.Redirect) answer).getPorts();
+                        for (int i = 0; i < hosts.size(); i++) {
+                            String potentialNode = hosts.get(i) + ":" + ports.get(i);
+                            if (!visited.contains(potentialNode))
+                                toVisit.add(potentialNode);
+                        }
+                    }
+
+                    else {
+                        System.out.println("Unexpected answer to request");
+                    }
+                } catch (MessageProtocolException e) {
+                    throw new RuntimeException(e);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        } catch (FileNotFoundException e) {
-            System.out.println("File " + filepath + "does not exist.");
-            return;
         }
-        KVEntry entry = new KVEntry(data.toString());
-        connection.send(ClientServerMessageProtocol.put(entry));
-        System.out.println("Put value with key " + entry.getKey());
-    }
-
-    private static void get(TcpConnection connection, String key) throws IOException {
-        connection.send(ClientServerMessageProtocol.get(key));
-        String value = connection.read();
-        System.out.println(value);
-    }
-
-    private static void delete(TcpConnection connection, String key) {
-        connection.send(ClientServerMessageProtocol.delete(key));
     }
 
     public static void main(String[] args) {

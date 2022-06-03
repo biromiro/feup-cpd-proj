@@ -57,9 +57,7 @@ public class MembershipProtocolHandler implements Runnable {
 
     private void sendMembershipView(String host, int port) {
         int delay = (int) (Math.random() * MAX_SEND_MEMBERSHIP_VIEW_DELAY_MILLISECONDS);
-        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
-            executor.submit(new MembershipMessageDispatcher(executor, membershipView, host, port));
-        });
+        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> executor.submit(new MembershipMessageDispatcher(executor, membershipView, host, port)));
     }
 
     private void determineIfShouldSendMembershipView(String host, int port, Map<String, Integer> blacklist) {

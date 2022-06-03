@@ -25,9 +25,7 @@ public class MembershipEchoMessageSender implements Runnable {
             try {
                 clusterConnection.send(MembershipMessageProtocol.membershipLog(membershipView));
                 // TODO isto cria um novo executor. Nos so deviamos usar o executor original
-                CompletableFuture.delayedExecutor(TIMEOUT, TimeUnit.MILLISECONDS).execute(() -> {
-                    executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView));
-                });
+                CompletableFuture.delayedExecutor(TIMEOUT, TimeUnit.MILLISECONDS).execute(() -> executor.submit(new MembershipEchoMessageSender(executor, clusterConnection, membershipView)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
