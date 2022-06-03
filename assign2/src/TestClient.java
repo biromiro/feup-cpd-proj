@@ -19,7 +19,7 @@ public class TestClient {
     private static final List<String> KEY_VALUE_OPERATIONS = Arrays.asList("put", "get", "delete");
 
     private static void printUsage() {
-        System.out.println("java TestClient <node_ap_ip>:<remote_object> <operation> [<operand>]");
+        System.out.println("java TestClient <node_ap_ip>:<store_port> <operation> [<operand>]");
     }
 
     private static void membershipOperation(String ip, String remoteObject, String operation) {
