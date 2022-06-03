@@ -1,7 +1,6 @@
 package KVStore;
 
 import Connection.AsyncTcpConnection;
-import Membership.MembershipHandler;
 import Message.ClientServerMessageProtocol;
 import Storage.Bucket;
 import Storage.PersistentStorage;
@@ -27,28 +26,19 @@ public class BucketTransferrer {
         this.storePort = storePort;
     }
 
-    private class FetchHandler implements AsyncTcpConnection.ConnectionHandler, AsyncTcpConnection.WriteHandler {
+    private class ConnectionHandler implements AsyncTcpConnection.ConnectionHandler {
         private final ListIterator<String> iterator;
-        private AsyncTcpConnection connection;
+        private final String destination;
         private final Function<Void, Void> whenTransferred;
 
-        public FetchHandler(ListIterator<String> iterator, Function<Void, Void> whenTransferred) {
+        public ConnectionHandler(ListIterator<String> iterator, String destination, Function<Void, Void> whenTransferred) {
             this.iterator = iterator;
+            this.destination = destination;
             this.whenTransferred = whenTransferred;
         }
 
-        public AsyncTcpConnection getConnection() {
-            return connection;
-        }
-
-        @Override
-        public void completed(Integer result) {
-            completed(connection);
-        }
         @Override
         public void completed(AsyncTcpConnection connection) {
-            this.connection = connection;
-
             if (!iterator.hasNext()) {
                 if (cluster.size() > Cluster.REPLICATION_FACTOR) {
                     List<String> predecessors = cluster.nPreviousPredecessors(nodeId);
@@ -72,7 +62,7 @@ public class BucketTransferrer {
             }
 
             String key = iterator.next();
-            bucket.get(key, new TransferHandler(key, this));
+            bucket.get(key, new ReadHandler(key, connection, this));
         }
 
         @Override
@@ -84,20 +74,27 @@ public class BucketTransferrer {
         public Function<Void, Void> getWhenTransferred() {
             return whenTransferred;
         }
+
+        public String getDestination() {
+            return destination;
+        }
     }
 
-    private class TransferHandler implements PersistentStorage.ReadHandler {
-        private final FetchHandler handler;
+    private class ReadHandler implements PersistentStorage.ReadHandler {
+        private final AsyncTcpConnection connection;
+        private final ConnectionHandler handler;
         private final String key;
 
-        public TransferHandler(String key, FetchHandler handler) {
+        public ReadHandler(String key, AsyncTcpConnection connection, ConnectionHandler handler) {
+            this.connection = connection;
             this.handler = handler;
             this.key = key;
         }
 
         @Override
         public void completed(Integer len, String message) {
-            handler.getConnection().write(ClientServerMessageProtocol.transfer(key, message), handler);
+            connection.write(ClientServerMessageProtocol.transfer(key, message),
+                    new SentHandler(handler));
         }
 
         @Override
@@ -107,13 +104,33 @@ public class BucketTransferrer {
         }
     }
 
+    private class SentHandler implements AsyncTcpConnection.WriteHandler {
+        private final ConnectionHandler handler;
+
+        public SentHandler(ConnectionHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void completed(Integer result) {
+            AsyncTcpConnection.connect(executor, handler.getDestination(), storePort, handler);
+        }
+
+        @Override
+        public void failed(Throwable exc) {
+            exc.printStackTrace();
+            this.handler.getWhenTransferred().apply(null);
+        }
+    }
+
     private void transferKeys(String destination, List<String> keys, Function<Void, Void> whenTransferred) {
         if (keys.isEmpty()) {
             whenTransferred.apply(null);
             return;
         }
         ListIterator<String> iterator = keys.listIterator();
-        AsyncTcpConnection.connect(executor, destination, storePort, new FetchHandler(iterator, whenTransferred));
+        AsyncTcpConnection.connect(executor, destination, storePort,
+                new ConnectionHandler(iterator, destination, whenTransferred));
     }
 
     private void transferKeys(String destination, List<String> keys) {
