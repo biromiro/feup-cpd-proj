@@ -97,21 +97,12 @@ public class ClientServerMessageProtocol {
 
     public static class Redirect extends ClientServerMessageProtocol {
         private final List<String> hosts;
-        private final List<Integer> ports;
+
         public Redirect(List<String> targets) {
-            hosts = new ArrayList<>();
-            ports = new ArrayList<>();
-            for (String target : targets) {
-                String[] params = target.split(":", 2);
-                hosts.add(params[0]);
-                ports.add(Integer.parseInt(params[1]));
-            }
+            this.hosts = targets;
         }
         public List<String> getHosts() {
             return hosts;
-        }
-        public List<Integer> getPorts() {
-            return ports;
         }
     }
 

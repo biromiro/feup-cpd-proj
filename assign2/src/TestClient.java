@@ -73,56 +73,41 @@ public class TestClient {
     private static void actOnEndpoint(String ip, int port, String request, Function<ClientServerMessageProtocol.Done, Void> onDone) {
         List<String> visited = new ArrayList<>();
         Queue<String> toVisit = new ArrayDeque<>();
-        toVisit.add(ip + ":" + port);
+        toVisit.add(ip);
         while (!toVisit.isEmpty()) {
             String visiting = toVisit.remove();
-            System.out.println("start " + visiting);
+            System.out.println("Connecting to " + visiting);
             visited.add(visiting);
-            String[] params = visiting.split(":");
-            ip = params[0];
-            port = Integer.parseInt(params[1]);
 
-            try (TcpConnection connection = new TcpConnection(ip, port)) {
-                //Ask for entry
+            String value;
+            try (TcpConnection connection = new TcpConnection(visiting, port)) {
                 connection.send(request);
-
-                // Hear response
-                String value;
                 value = connection.read();
-
-                // Process it
-                try {
-                    ClientServerMessageProtocol answer = ClientServerMessageProtocol.parse(value);
-
-                    if (answer instanceof ClientServerMessageProtocol.Done doneMessage) {
-                        //No redirection. At the endpoint node.
-                        onDone.apply(doneMessage);
-                        break;
-                    }
-
-                    else if (answer instanceof ClientServerMessageProtocol.Error error) {
-                        System.out.println("Error: " + error.getErrorMessage());
-                    }
-
-                    else if (answer instanceof ClientServerMessageProtocol.Redirect) {
-                        //Not at endpoint node. Reach them instead.
-                        List<String> hosts = ((ClientServerMessageProtocol.Redirect) answer).getHosts();
-                        List<Integer> ports = ((ClientServerMessageProtocol.Redirect) answer).getPorts();
-                        for (int i = 0; i < hosts.size(); i++) {
-                            String potentialNode = hosts.get(i) + ":" + ports.get(i);
-                            if (!visited.contains(potentialNode))
-                                toVisit.add(potentialNode);
-                        }
-                    }
-
-                    else {
-                        System.out.println("Unexpected answer to request");
-                    }
-                } catch (MessageProtocolException e) {
-                    throw new RuntimeException(e);
-                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            }
+
+            ClientServerMessageProtocol answer;
+            try {
+                answer = ClientServerMessageProtocol.parse(value);
+            } catch (MessageProtocolException e) {
+                throw new RuntimeException(e);
+            }
+
+            if (answer instanceof ClientServerMessageProtocol.Done done) {
+                // No redirection. At the endpoint node.
+                onDone.apply(done);
+                break;
+            } else if (answer instanceof ClientServerMessageProtocol.Error error) {
+                System.out.println("Error: " + error.getErrorMessage());
+            } else if (answer instanceof ClientServerMessageProtocol.Redirect redirect) {
+                for (String target: redirect.getHosts()) {
+                    if (!visited.contains(target)) {
+                        toVisit.add(target);
+                    }
+                }
+            } else {
+                System.out.println("Unexpected answer to request");
             }
         }
     }

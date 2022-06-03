@@ -14,18 +14,21 @@ public class AsyncServer implements AutoCloseable {
     private final AsynchronousServerSocketChannel socket;
 
     public AsyncServer(InetSocketAddress address, ScheduledThreadPoolExecutor executor) throws IOException {
+        System.out.println("Creating server on " + address);
         this.socket = AsynchronousServerSocketChannel
                 .open(AsynchronousChannelGroup.withThreadPool(executor))
                 .bind(address);
         this.address = (InetSocketAddress) this.socket.getLocalAddress();
     }
 
-    public AsyncServer(int port, ScheduledThreadPoolExecutor executor) throws IOException {
-        this(new InetSocketAddress(port), executor);
+    public AsyncServer(String hostname, int port, ScheduledThreadPoolExecutor executor) throws IOException {
+        //this(new InetSocketAddress(hostname, port), executor);
+        // TODO REMOVE HACK
+        this(new InetSocketAddress(hostname, port + Integer.parseInt(hostname.split("\\.")[3])), executor);
     }
 
-    public AsyncServer(ScheduledThreadPoolExecutor executor) throws IOException {
-        this(new InetSocketAddress(0), executor);
+    public AsyncServer(String hostname, ScheduledThreadPoolExecutor executor) throws IOException {
+        this(new InetSocketAddress(hostname, 0), executor);
     }
 
     @Override
