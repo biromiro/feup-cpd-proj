@@ -5,7 +5,7 @@ public class Store {
 
     private static void startStore(String mcastAddr, int mcastPort, String nodeId, int storePort) {
         Node node = new Node(mcastAddr, mcastPort, nodeId, storePort);
-        node.bindRMI(String.valueOf(storePort));
+        node.bindRMI(nodeId);
         node.start();
     }
 

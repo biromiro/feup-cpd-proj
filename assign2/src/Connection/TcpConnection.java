@@ -14,9 +14,7 @@ public class TcpConnection implements AutoCloseable {
     private static final int TIMEOUT = 5000;
 
     public TcpConnection(String host, int port) throws IOException {
-        //socket = new Socket(host, port);
-        // TODO REMOVE HACK
-        socket = new Socket(host, port + Integer.parseInt(host.split("\\.")[3]));
+        socket = new Socket(host, port);
         socket.setSoTimeout(TIMEOUT);
         writer = new PrintWriter(socket.getOutputStream());
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));

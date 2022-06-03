@@ -85,7 +85,7 @@ public class KVStoreMessageHandler {
     }
 
     private void redirect(List<String> targets) {
-
+        System.out.println("ALMOST...");
         worker.write(ClientServerMessageProtocol.redirect(targets), new AsyncTcpConnection.WriteHandler() {
             @Override
             public void completed(Integer result) {
@@ -136,9 +136,11 @@ public class KVStoreMessageHandler {
         Cluster cluster = membershipView.getCluster();
         List<String> successors = cluster.nNextSuccessors(key, REPLICATION_FACTOR);
         // If node has key, get it and send it back
+        System.out.println("HANDLING GET");
         if (successors.contains(localNodeId)) {
             bucket.get(key, new LocalGetHandler());
         } else {
+            System.out.println("REDIRECTING");
             redirect(cluster.nNextSuccessors(key, REPLICATION_FACTOR));
         }
     }

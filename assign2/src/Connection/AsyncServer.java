@@ -22,9 +22,7 @@ public class AsyncServer implements AutoCloseable {
     }
 
     public AsyncServer(String hostname, int port, ScheduledThreadPoolExecutor executor) throws IOException {
-        //this(new InetSocketAddress(hostname, port), executor);
-        // TODO REMOVE HACK
-        this(new InetSocketAddress(hostname, port + Integer.parseInt(hostname.split("\\.")[3])), executor);
+        this(new InetSocketAddress(hostname, port), executor);
     }
 
     public AsyncServer(String hostname, ScheduledThreadPoolExecutor executor) throws IOException {

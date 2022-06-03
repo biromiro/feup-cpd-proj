@@ -34,6 +34,7 @@ public class ClientServerMessageProtocol {
         for (String target : targets) {
             message.addHeaderEntry("redirect", target);
         }
+
         return message.toString();
     }
 
